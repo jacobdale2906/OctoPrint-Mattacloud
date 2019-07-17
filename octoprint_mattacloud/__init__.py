@@ -20,7 +20,11 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                        octoprint.plugin.EventHandlerPlugin):
 
     def get_settings_defaults(self):
-        return dict()
+        return dict(
+            base_url="https://mattalabs.com/",
+            authorization_token="e.g. w1il4li2am2ca1xt4on91",
+            enabled=True,
+        )
 
     def get_assets(self):
         return dict(
@@ -62,10 +66,43 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         return self._file_manager.list_files(recursive=True)
 
     def get_base_url(self):
+        if not self._settings.get(["base_url"]):
+            self._logger.info("No base URL in OctoPrint settings")
+            return None
+
+        url = self._settings.get(["base_url"])
+        url = url.strip()
+        if url.startswith("/"):
+            url = url[1:]
+        if url.endswith("/"):
+            url = url[:-1]
+        return url
+
+    def get_api_url(self):
+        pass
+
+    def get_ws_url(self):
+        pass
+
+    def get_ping_url(self):
+        pass
+
+    def get_data_url(self):
+        pass
+
+    def get_img_url(self):
+        pass
+
+    def get_gcode_url(self):
+        pass
+
+    def get_request_url(self):
         pass
 
     def get_auth_token(self):
-        pass
+        if not self._settings.get(["authorization_token"]):
+            return None
+        return self._settings.get(["authorization_token"])
 
     def on_after_startup(self):
         self._logger.info("Starting OctoPrint-Mattacloud Plugin...")
