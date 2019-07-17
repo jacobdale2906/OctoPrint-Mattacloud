@@ -4,9 +4,11 @@
 
 from __future__ import absolute_import
 
-import octoprint.plugin
 
 import logging
+from urlparse import urljoin
+
+import octoprint.plugin
 
 from .watcher import ImageHandler
 from .ws import Socket
@@ -79,25 +81,40 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         return url
 
     def get_api_url(self):
-        pass
+        base_url = self.get_base_url()
+        url = urljoin(base_url, "api")
+        return url
 
     def get_ws_url(self):
-        pass
+        api_url = self.get_api_url()
+        url = urljoin(api_url, "ws", "printer")
+        url = url.replace("http", "ws")
+        return url
 
     def get_ping_url(self):
-        pass
+        api_url = self.get_api_url()
+        url = urljoin(api_url, "ping")
+        return url
 
     def get_data_url(self):
-        pass
+        api_url = self.get_api_url()
+        url = urljoin(api_url, "receive", "data")
+        return url
 
     def get_img_url(self):
-        pass
+        api_url = self.get_api_url()
+        url = urljoin(api_url, "receive", "img")
+        return url
 
     def get_gcode_url(self):
-        pass
+        api_url = self.get_api_url()
+        url = urljoin(api_url, "receive", "gcode")
+        return url
 
     def get_request_url(self):
-        pass
+        api_url = self.get_api_url()
+        url = urljoin(api_url, "receive", "request")
+        return url
 
     def get_auth_token(self):
         if not self._settings.get(["authorization_token"]):
