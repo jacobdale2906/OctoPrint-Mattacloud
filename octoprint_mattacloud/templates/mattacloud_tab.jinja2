@@ -1,1 +1,42 @@
-<div></div>
+<div class="panel panel-default">
+    <div class="panel-heading ol-heading">
+        <div class="row-fluid">
+            <div class="span11">
+                <h4 data-bind="text: enabled">Mattacloud</h4>
+            </div>
+            <div class="text-right">
+                <label class="toggle-switch-fa-sm" >
+                    <input type="checkbox" data-bind="checked: enabled_value, click: toggle_mattacloud" >
+                    <span class="fa-slider" ><i class="fa icon-off fa-inverse"></i></span>
+                </label>
+            </div>
+        </div>
+    </div>
+    <div class="panel-body" id="tab_plugin_mattalcoud_panel_body">
+        <div>
+        <p data-bind="text: status">Status: </p>
+        </div>
+        <h4>Printer Information: </h4>
+        <div>
+            <p>Authorisation Token: <span data-bind="text: auth_token"></span></p>
+        </div>
+        <div>
+            <p>Configuration Print:
+            <label class="toggle-switch-fa-sm" >
+            <input type="checkbox" name="config_print" value="config_print" data-bind="checked: config_print, click: set_config_print">
+            <span class="fa-slider" ><i class="fa icon-off fa-inverse"></i></span>
+            </label>
+            </p>
+        </div>
+        <h4>Error Detection: </h4>
+        <div>
+            <p>Sever Address: <span data-bind="text: server_address"></span></p>
+        </div>
+        <div>
+            <p>Snapshot Directory: <span data-bind="text: snapshot_dir"></span></p>
+        </div>
+        <div>
+            <p>Upload Directory: <span data-bind="text: upload_dir"></span></p>
+        </div>
+    </div>
+</div>
