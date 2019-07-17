@@ -121,8 +121,24 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             return None
         return self._settings.get(["authorization_token"])
 
+    def make_auth_header(self, token=None):
+        if not token:
+            token = self.get_auth_token()
+        return {
+            self.auth_token_header(token),
+        }
+
+    def auth_token_header(self, token=None):
+        if not token:
+            token = self.get_auth_token()
+        return "Authorization: Token {}".format(token)
+
     def on_after_startup(self):
         self._logger.info("Starting OctoPrint-Mattacloud Plugin...")
+        self.img_lst = []
+        self.len_img_lst = 0
+        self.new_print_job = False
+        self.ws = None
 
     def on_event(self, event, payload):
         self._logger.info("Event: " + str(event))
