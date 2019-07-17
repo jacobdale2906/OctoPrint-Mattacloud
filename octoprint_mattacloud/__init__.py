@@ -61,12 +61,27 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self._logger.info("Fetching file list")
         return self._file_manager.list_files(recursive=True)
 
+    def get_base_url(self):
+        pass
+
+    def get_auth_token(self):
+        pass
+
     def on_after_startup(self):
         self._logger.info("Starting OctoPrint-Mattacloud Plugin...")
 
     def on_event(self, event, payload):
         self._logger.info("Event: " + str(event))
         self._logger.info("Payload: " + str(payload))
+
+    def is_enabled(self):
+        return self._settings.get(["enabled"])
+
+    def is_operational(self):
+        return self._printer.is_ready() or self._printer.is_operational()
+
+    def is_setup_complete(self):
+        return self.get_base_url() and self.get_auth_token()
 
 
 __plugin_name__ = 'Mattacloud'
