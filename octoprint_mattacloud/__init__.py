@@ -4,10 +4,17 @@
 
 from __future__ import absolute_import
 
+import os
 import time
 import json
 import threading
+import requests
+import datetime
+import flask
+import cgi
+import io
 from urlparse import urljoin
+from watchdog.observers import Observer
 
 import octoprint.plugin
 
@@ -26,7 +33,11 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         return dict(
             base_url="https://mattalabs.com/",
             authorization_token="e.g. w1il4li2am2ca1xt4on91",
+            snapshot_dir="/home/pi/.octoprint/data/octolapse/snapshots/",
+            upload_dir="/home/pi/.octoprint/uploads/",
+            snapshot_count=0,
             enabled=True,
+            config_print=False,
         )
 
     def get_assets(self):
@@ -140,6 +151,15 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self.len_img_lst = 0
         self.new_print_job = False
         self.ws = None
+        main_thread = threading.Thread(target=self.loop)
+        main_thread.daemon = True
+        main_thread.start()
+        dir_path = self.get_octolapse_dir()
+        watchdog_thread = threading.Thread(
+            target=self.run_observer, args=(dir_path,))
+        watchdog_thread.daemon = True
+        watchdog_thread.start()
+        self.ws_connect()
 
     def on_event(self, event, payload):
         self._logger.info("Event: " + str(event))
@@ -173,6 +193,50 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def is_setup_complete(self):
         return self.get_base_url() and self.get_auth_token()
+
+    def is_config_print(self):
+        return self._settings.get(["config_print"])
+
+    def has_job(self):
+        if (self._printer.is_printing() or
+            self._printer.is_paused() or
+                self._printer.is_pausing()):
+            return True
+        return False
+
+    def get_snapshot_dir(self):
+        if not self._settings.get(["snapshot_dir"]):
+            return None
+        return self._settings.get(["snapshot_dir"])
+
+    def get_octolapse_dir(self, dir_path=None):
+        if not dir_path:
+            dir_path = self.get_snapshot_dir()
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        return dir_path
+
+    def get_latest_img_path(self, img_path):
+        self.current_img_path = img_path
+
+    def set_snapshot_count(self, count):
+        self._settings.set(["snapshot_count"], count, force=True)
+        self._settings.save(force=True)
+
+    def run_observer(self, dir_path):
+        event_handler = ImageHandler(self.img_lst)
+        observer = Observer()
+        observer.schedule(event_handler, path=dir_path, recursive=True)
+        observer.start()
+
+        try:
+            while True:
+                time.sleep(1)
+        except (KeyboardInterrupt, SystemExit) as ex:
+            self._logger.warning("Exception Handling")
+            observer.stop()
+
+        observer.join()
 
     def ws_connect(self):
         self._logger.info("Connecting websocket")
@@ -210,20 +274,119 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
     def handle_cmds(self, json_msg):
         pass
 
+    def make_timestamp(self):
+        dt = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        return dt
+
+    def post_gcode(self, gcode=None):
+        self._logger.info("Posting gcode")
+        if not self.is_setup_complete():
+            self._logger.warning("Printer not ready")
+            return
+
+        data = {
+            "timestamp": self.make_timestamp(),
+            "config": 1 if self.is_config_print() else 0,
+        }
+
+        if not gcode:
+            job_info = self.get_current_job()
+            gcode_name = job_info.get("file", {}).get("name")
+            upload_dir = self._settings.get(["upload_dir"])
+            path = upload_dir + gcode_name
+            gcode = open(path, "rb")
+
+        url = self.get_gcode_url()
+
+        files = {
+            "gcode": gcode,
+        }
+
+        resp = requests.post(
+            url=url,
+            files=files,
+            data=data,
+            headers=self.get_auth_headers_dict()
+        )
+        resp.raise_for_status()
+
+    def post_img(self, img=None):
+        self._logger.info("Posting image")
+        if not self.is_setup_complete():
+            self._logger.info("Printer not ready")
+            return
+
+        url = self.get_img_url()
+
+        files = {
+            "img": img,
+        }
+
+        data = {
+            "timestamp": self.make_timestamp(),
+        }
+        resp = requests.post(
+            url=url,
+            files=files,
+            data=data,
+            headers=self.get_auth_headers_dict()
+        )
+        resp.raise_for_status()
+
+    def post_data(self, data=None):
+        self._logger.info("Posting data")
+        if not self.is_setup_complete():
+            self._logger.warning("Printer not ready")
+            return
+
+        if not data:
+            data = {
+                "timestamp": self.make_timestamp(),
+                "data": self.get_printer_data(),
+            }
+
+        url = self.get_data_url()
+
+        resp = requests.post(
+            url=url,
+            data=data,
+            headers=self.get_auth_headers_dict()
+        )
+        resp.raise_for_status()
+        self.process_response(resp)
+
+    def is_new_job(self):
+        if self.has_job():
+            if self.new_print_job:
+                self._logger.info("New job")
+                self.post_gcode()
+                self.new_print_job = False
+        elif self.is_operational():
+            self.new_print_job = True
+            if self.img_lst != []:
+                del self.img_lst[:]
+                self.len_img_lst = 0
+                self.set_snapshot_count(0)
+
     def loop(self):
         while True:
             if self.is_enabled():
-                if not is_setup_complete():
+                if not self.is_setup_complete():
                     self._logger.warning("Invalid URL or Authorisation Token")
                     time.sleep(1)
                     next
 
+                self.is_new_job()
                 if self.ws:
                     msg = self.ws_data()
                     self.ws.send_msg(msg)
 
                 if self.len_img_lst < len(self.img_lst):
-                    pass
+                    self.len_img_lst = len(self.img_lst)
+                    self.set_snapshot_count(self.len_img_lst)
+                    latest_img = self.get_latest_img()
+                    if latest_img:
+                        self.post_img(open(latest_img, "rb"))
 
             time.sleep(1)
 
