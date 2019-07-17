@@ -4,8 +4,9 @@
 
 from __future__ import absolute_import
 
-import logging
 import time
+import json
+import threading
 from urlparse import urljoin
 
 import octoprint.plugin
@@ -144,6 +145,26 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self._logger.info("Event: " + str(event))
         self._logger.info("Payload: " + str(payload))
 
+    def event_ws_data(self, event, payload):
+        data = self.ws_data()
+        data["event"] = {
+            "event_type": event,
+            "payload": payload
+        }
+        return data
+
+    def event_post_data(self, event, payload):
+        data = {
+            "event": {
+                "event_type": event,
+                "payload": payload
+            },
+            "printer_data": self.get_printer_data(),
+            "temperature_data": self.get_printer_temps(),
+            "timestamp": self.make_timestamp(),
+        }
+        return data
+
     def is_enabled(self):
         return self._settings.get(["enabled"])
 
@@ -152,6 +173,42 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def is_setup_complete(self):
         return self.get_base_url() and self.get_auth_token()
+
+    def ws_connect(self):
+        self._logger.info("Connecting websocket")
+        self.ws = Socket(on_message=lambda ws, msg: self.ws_on_message(ws, msg),
+                         on_close=lambda ws: self.ws_on_close(ws),
+                         url=self.get_ws_url(),
+                         token=self.get_auth_token())
+        ws_thread = threading.Thread(target=self.ws.run)
+        ws_thread.daemon = True
+        ws_thread.start()
+        self._logger.info("Started websocket")
+
+    def ws_on_close(self, ws):
+        self._logger.info("Closing websocket...")
+        self.ws.disconnect()
+        self.ws = None
+
+    def ws_on_message(self, ws, msg):
+        self._logger.info("Message... {}".format(msg))
+        json_msg = json.loads(msg)
+        if "cmd" in json_msg:
+            self.handle_cmds(json_msg)
+
+    def ws_data(self):
+        # TODO: Customise what is sent depending on requirements
+        data = {
+            "temperature_data": self.get_printer_temps(),
+            "printer_data": self.get_printer_data(),
+            "timestamp": self.make_timestamp(),
+            "files": self.get_files(),
+            "job": self.get_current_job(),
+        }
+        return data
+
+    def handle_cmds(self, json_msg):
+        pass
 
     def loop(self):
         while True:
@@ -162,7 +219,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     next
 
             if self.ws:
-                pass
+                msg = self.ws_data()
+                self.ws.send_msg(msg)
 
             if self.len_img_lst < len(self.img_lst):
                 pass

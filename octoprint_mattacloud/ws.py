@@ -1,7 +1,5 @@
-import datetime
 import websocket
 import logging
-import json
 
 _logger = logging.getLogger(__name__)
 
