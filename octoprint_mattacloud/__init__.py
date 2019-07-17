@@ -29,12 +29,23 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                        octoprint.plugin.SimpleApiPlugin,
                        octoprint.plugin.EventHandlerPlugin):
 
+    # def get_settings_defaults(self):
+    #     return dict(
+    #         base_url="https://mattalabs.com/",
+    #         authorization_token="e.g. w1il4li2am2ca1xt4on91",
+    #         snapshot_dir="/home/pi/.octoprint/data/octolapse/snapshots/",
+    #         upload_dir="/home/pi/.octoprint/uploads/",
+    #         snapshot_count=0,
+    #         enabled=True,
+    #         config_print=False,
+    #     )
+
     def get_settings_defaults(self):
         return dict(
             base_url="https://mattalabs.com/",
             authorization_token="e.g. w1il4li2am2ca1xt4on91",
-            snapshot_dir="/home/pi/.octoprint/data/octolapse/snapshots/",
-            upload_dir="/home/pi/.octoprint/uploads/",
+            snapshot_dir="/Users/douglas/Library/Application Support/OctoPrint/data/octolapse/snapshots/",
+            upload_dir="/Users/douglas/Library/Application Support/OctoPrint/uploads/",
             snapshot_count=0,
             enabled=True,
             config_print=False,
@@ -216,6 +227,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             os.makedirs(dir_path)
         return dir_path
 
+    def get_latest_img(self):
+        return self.img_lst[-1]
+
     def get_latest_img_path(self, img_path):
         self.current_img_path = img_path
 
@@ -272,7 +286,94 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         return data
 
     def handle_cmds(self, json_msg):
-        pass
+        if "cmd" in json_msg:
+            if json_msg["cmd"].lower() == "pause":
+                self._printer.pause_print()
+            if json_msg["cmd"].lower() == "resume":
+                self._printer.resume_print()
+            if json_msg["cmd"].lower() == "cancel":
+                self._printer.cancel_print()
+            if json_msg["cmd"].lower() == "toggle":
+                self._printer.toggle_pause_print()
+            if json_msg["cmd"].lower() == "print":
+                if "file" in json_msg:
+                    file_to_print = json_msg["file"]
+                    on_sd = True if json_msg["loc"].lower() == "sd" else False
+                    self._printer.select_file(
+                        json_msg["file"], sd=on_sd, printAfterSelect=True)
+            if json_msg["cmd"].lower() == "select":
+                if "file" in json_msg:
+                    file_to_print = json_msg["file"]
+                    on_sd = True if json_msg["loc"].lower() == "sd" else False
+                    self._printer.select_file(json_msg["file"], sd=on_sd)
+            if json_msg["cmd"].lower() == "home":
+                if "axes" in json_msg:
+                    axes = json_msg["axes"]
+                    # TODO: Deal with one or multiple axes
+                    self._printer.home(axes=axes)
+                else:
+                    self._printer.home()
+            if json_msg["cmd"].lower() == "jog":
+                if "axes" in json_msg:
+                    axes = json_msg["axes"]
+                    # TODO: Check if axes dict is valid
+                    # Axes and distances to jog, keys are axes (“x”, “y”, “z”),
+                    # values are distances in mm
+                    self._printer.jog(axes=axes, relative=True)
+            if json_msg["cmd"].lower() == "extrude":
+                if "amt" in json_msg:
+                    amt = json_msg["amt"]
+                    self._printer.extrude(amount=amt)
+            if json_msg["cmd"].lower() == "retract":
+                if "amt" in json_msg:
+                    amt = -json_msg["amt"]
+                    self._printer.extrude(amount=amt)
+            if json_msg["cmd"].lower() == "change_tool":
+                if "tool" in json_msg:
+                    new_tool = "tool{}".format(json_msg["tool"])
+                    self._printer.change_tool(tool=new_tool)
+            if json_msg["cmd"].lower() == "feed_rate":
+                if "factor" in json_msg:
+                    new_factor = json_msg["factor"]
+                    # TODO: Add checking to see if valid factor
+                    # Percentage expressed as either an int between 0 and 100
+                    # or a float between 0 and 1.
+                    self._printer.feed_rate(factor=new_factor)
+            if json_msg["cmd"].lower() == "flow_rate":
+                if "factor" in json_msg:
+                    new_factor = json_msg["factor"]
+                    # TODO: Add checking to see if valid factor
+                    # Percentage expressed as either an int between 0 and 100
+                    # or a float between 0 and 1.
+                    self._printer.flow_rate(factor=new_factor)
+            if json_msg["cmd"].lower() == "gcode":
+                if "commands" in json_msg:
+                    gcode_cmds = json_msg["commands"]
+                    # TODO: Check if single (str) or multiple (lst)
+                    self._printer.commands(commands=gcode_cmds)
+            if json_msg["cmd"].lower() == "temperature":
+                if "heater" in json_msg and "val" in json_msg:
+                    # TODO: More elegantly handle different inputs
+                    # e.g. bed, tool0, tool1, 0, 1
+                    heater = json_msg["heater"]
+                    if heater != "bed":
+                        heater = "tool{}".format(heater)
+                    val = json_msg["val"]
+                    self._printer.set_temperature(heater=heater, value=val)
+            if json_msg["cmd"].lower() == "temperature_offset":
+                if "offsets" in json_msg:
+                    # TODO: Validate the "offsets" dict
+                    # Keys must match the format for the heater parameter
+                    # to set_temperature(), so “bed” for the offset for the
+                    # bed target temperature and “tool[0-9]+” for the
+                    # offsets to the hotend target temperatures.
+                    offsets = json_msg["offsets"]
+                    self._printer.set_temperature_offset(offset=offsets)
+            if json_msg["cmd"].lower() == "upload_request":
+                self._logger.info("Upload Request")
+                if "id" in json_msg:
+                    self.post_upload_request(file_id=json_msg["id"])
+
 
     def make_timestamp(self):
         dt = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -354,6 +455,43 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         )
         resp.raise_for_status()
         self.process_response(resp)
+
+    def post_upload_request(self, file_id):
+        self._logger.info("Posting upload request")
+        if not self.is_setup_complete():
+            self._logger.warning("Printer not ready")
+            return
+
+        data = {
+            "timestamp": self.make_timestamp(),
+            "status": "ready",
+            "type": "file",
+            "file_id": file_id,
+        }
+
+        url = self.get_request_url()
+
+        resp = requests.post(
+            url=url,
+            json=data,
+            headers=self.get_auth_headers_dict()
+        )
+        resp.raise_for_status()
+        self.process_response(resp)
+
+        data = {
+            "timestamp": self.make_timestamp(),
+            "status": "success",
+            "type": "file",
+            "file_id": file_id,
+        }
+
+        resp = requests.post(
+            url=url,
+            json=data,
+            headers=self.get_auth_headers_dict()
+        )
+        resp.raise_for_status()
 
     def is_new_job(self):
         if self.has_job():
