@@ -45,8 +45,28 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             pip='https://github.com/dougbrion/OctoPrint-Mattacloud/archive/{target_version}.zip',
         ))
 
+    def get_printer_data(self):
+        self._logger.info("Fetching printer data")
+        return self._printer.get_current_data()
+
+    def get_current_job(self):
+        self._logger.info("Fetching job data")
+        return self._printer.get_current_job()
+
+    def get_printer_temps(self):
+        self._logger.info("Fetching temperature data")
+        return self._printer.get_current_temperatures()
+
+    def get_files(self):
+        self._logger.info("Fetching file list")
+        return self._file_manager.list_files(recursive=True)
+
     def on_after_startup(self):
         self._logger.info("Starting OctoPrint-Mattacloud Plugin...")
+
+    def on_event(self, event, payload):
+        self._logger.info("Event: " + str(event))
+        self._logger.info("Payload: " + str(payload))
 
 
 __plugin_name__ = 'Mattacloud'
