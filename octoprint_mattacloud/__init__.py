@@ -13,7 +13,6 @@ import datetime
 import flask
 import cgi
 import io
-from urlparse import urljoin
 from watchdog.observers import Observer
 
 import octoprint.plugin
@@ -76,19 +75,19 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ))
 
     def get_printer_data(self):
-        self._logger.info("Fetching printer data")
+        # self._logger.info("Fetching printer data")
         return self._printer.get_current_data()
 
     def get_current_job(self):
-        self._logger.info("Fetching job data")
+        # self._logger.info("Fetching job data")
         return self._printer.get_current_job()
 
     def get_printer_temps(self):
-        self._logger.info("Fetching temperature data")
+        # self._logger.info("Fetching temperature data")
         return self._printer.get_current_temperatures()
 
     def get_files(self):
-        self._logger.info("Fetching file list")
+        # self._logger.info("Fetching file list")
         return self._file_manager.list_files(recursive=True)
 
     def get_base_url(self):
@@ -106,38 +105,40 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def get_api_url(self):
         base_url = self.get_base_url()
-        url = urljoin(base_url, "api")
+        url = base_url + "/api"
+        self._logger.info(url)
         return url
 
     def get_ws_url(self):
         api_url = self.get_api_url()
-        url = urljoin(api_url, "ws", "printer")
+        url = api_url + "/ws/printer/"
+        self._logger.info(url)
         url = url.replace("http", "ws")
         return url
 
     def get_ping_url(self):
         api_url = self.get_api_url()
-        url = urljoin(api_url, "ping")
+        url = api_url + "/ping/"
         return url
 
     def get_data_url(self):
         api_url = self.get_api_url()
-        url = urljoin(api_url, "receive", "data")
+        url = api_url + "/receive/data/"
         return url
 
     def get_img_url(self):
         api_url = self.get_api_url()
-        url = urljoin(api_url, "receive", "img")
+        url = api_url + "/receive/img/"
         return url
 
     def get_gcode_url(self):
         api_url = self.get_api_url()
-        url = urljoin(api_url, "receive", "gcode")
+        url = api_url + "/receive/gcode/"
         return url
 
     def get_request_url(self):
         api_url = self.get_api_url()
-        url = urljoin(api_url, "receive", "request")
+        url = api_url + "/receive/request/"
         return url
 
     def get_auth_token(self):
@@ -148,9 +149,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
     def make_auth_header(self, token=None):
         if not token:
             token = self.get_auth_token()
-        return {
-            self.auth_token_header(token),
-        }
+        return {"Authorization": "Token {}".format(token)}
 
     def auth_token_header(self, token=None):
         if not token:
@@ -163,10 +162,10 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self.len_img_lst = 0
         self.new_print_job = False
         self.ws = None
+        dir_path = self.get_octolapse_dir()
         main_thread = threading.Thread(target=self.loop)
         main_thread.daemon = True
         main_thread.start()
-        dir_path = self.get_octolapse_dir()
         watchdog_thread = threading.Thread(
             target=self.run_observer, args=(dir_path,))
         watchdog_thread.daemon = True
@@ -176,6 +175,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
     def on_event(self, event, payload):
         self._logger.info("Event: " + str(event))
         self._logger.info("Payload: " + str(payload))
+        if self.is_enabled() and hasattr(self, "ws"):
+            msg = self.event_ws_data(event, payload)
+            self.ws.send_msg(msg)
 
     def event_ws_data(self, event, payload):
         data = self.ws_data()
@@ -507,7 +509,18 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         )
         resp.raise_for_status()
 
+    def get_api_commands(self):
+        return dict(
+            test_auth_token=["auth_token"],
+            set_enabled=[],
+            set_config_print=[],
+        )
+
+    def is_api_adminonly(self):
+        return True
+
     def on_api_command(self, command, data):
+        self._logger.info("ON API COMMAND")
         if command == "test_auth_token":
             auth_token = data["auth_token"]
             success, status_text = self.test_auth_token(token=auth_token)
@@ -515,7 +528,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 self._settings.set(["authorization_token"],
                                    auth_token, force=True)
                 self._settings.save(force=True)
-
             return flask.jsonify({"success": success, "text": status_text})
         if command == "set_enabled":
             previous_enabled = self._settings.get(["enabled"])
@@ -533,13 +545,16 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def test_auth_token(self, token):
         url = self.get_ping_url()
+        self._logger.info(url)
         success = False
         status_text = "Oh no! An unknown error occurred."
         try:
+            self._logger.info(self.make_auth_header(token=token))
             resp = requests.get(
                 url=url,
                 headers=self.make_auth_header(token=token)
             )
+            self._logger.info(resp)
             success = resp.ok
             if resp.status_code == 200:
                 status_text = "All is tickety boo! Your token is valid."
@@ -566,6 +581,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 self.set_snapshot_count(0)
 
     def loop(self):
+        self._logger.info("In loop")
         while True:
             if self.is_enabled():
                 if not self.is_setup_complete():
@@ -575,6 +591,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
                 self.is_new_job()
                 if self.ws:
+                    self._logger.info("Websocketing")
                     msg = self.ws_data()
                     self.ws.send_msg(msg)
 

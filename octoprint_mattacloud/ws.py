@@ -1,5 +1,6 @@
 import websocket
 import logging
+import json
 
 _logger = logging.getLogger(__name__)
 
@@ -28,7 +29,9 @@ class Socket():
         self.socket.run_forever()
 
     def send_msg(self, msg):
-        pass
+        if isinstance(msg, dict):
+            msg = json.dumps(msg)
+        self.socket.send(msg)
 
     def connected(self):
         _logger.debug("The websocket is connected.")
