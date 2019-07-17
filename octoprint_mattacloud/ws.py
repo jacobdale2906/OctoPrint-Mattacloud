@@ -8,25 +8,46 @@ _logger = logging.getLogger(__name__)
 
 class Socket():
     def __init__(self, on_message, on_close, url, token):
-        pass
+        self.socket = websocket.WebSocketApp(url,
+                                             on_message=on_message,
+                                             on_close=on_close,
+                                             on_error=self.on_error,
+                                             header=[
+                                                 "authorization: token {}".format(token)
+                                             ]
+                                             )
 
     def on_error(self, error):
-        pass
+        # TODO: handle websocket errors
+        _logger.error(error)
 
     def on_close(self):
-        pass
+        # TODO: handle websocket errors
+        _logger.debug("Closing the websocket...")
+        self.disconnect()
 
     def run(self):
-        pass
+        self.socket.run_forever()
 
     def send_msg(self, msg):
         pass
 
     def connected(self):
-        pass
+        _logger.debug("The websocket is connected.")
+        return self.socket.sock and self.socket.sock.connected
 
     def connect(self, on_message, on_close, url, token):
-        pass
+        self.socket = websocket.WebSocketApp(url,
+                                             on_message=on_message,
+                                             on_close=on_close,
+                                             on_error=self.on_error,
+                                             header=[
+                                                 "authorization: token {}".format(token)
+                                             ]
+                                             )
 
     def disconnect(self):
-        pass
+        _logger.debug("Disconnecting the websocket...")
+        self.socket.keep_running = False
+        self.socket.close()
+        _logger.debug("The websocket has been closed.")

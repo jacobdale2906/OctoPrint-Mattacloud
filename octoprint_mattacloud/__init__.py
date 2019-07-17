@@ -4,8 +4,8 @@
 
 from __future__ import absolute_import
 
-
 import logging
+import time
 from urlparse import urljoin
 
 import octoprint.plugin
@@ -153,6 +153,21 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
     def is_setup_complete(self):
         return self.get_base_url() and self.get_auth_token()
 
+    def loop(self):
+        while True:
+            if self.is_enabled():
+                if not is_setup_complete():
+                    self._logger.warning("Invalid URL or Authorisation Token")
+                    time.sleep(1)
+                    next
+
+            if self.ws:
+                pass
+
+            if self.len_img_lst < len(self.img_lst):
+                pass
+
+            time.sleep(1)
 
 __plugin_name__ = 'Mattacloud'
 
