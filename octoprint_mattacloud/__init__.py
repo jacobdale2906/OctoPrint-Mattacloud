@@ -17,6 +17,7 @@ from urlparse import urljoin
 from watchdog.observers import Observer
 
 import octoprint.plugin
+from octoprint.filemanager.util import StreamWrapper
 
 from .watcher import ImageHandler
 from .ws import Socket
@@ -374,6 +375,19 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 if "id" in json_msg:
                     self.post_upload_request(file_id=json_msg["id"])
 
+    def process_response(self, resp):
+        # TODO: Handle different types of response
+        self._logger.info(resp)
+        content_disposition = resp.headers["Content-Disposition"]
+        value, params = cgi.parse_header(content_disposition)
+        filename = params["filename"]
+        self._logger.info(filename)
+        stream = io.StringIO(resp.text)
+        stream_wrapper = StreamWrapper(filename, stream)
+        self._logger.info(stream_wrapper)
+        # Destination both local and SD card.
+        self._file_manager.add_file(
+            destination="local", path=filename, file_object=stream_wrapper)
 
     def make_timestamp(self):
         dt = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -407,7 +421,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             url=url,
             files=files,
             data=data,
-            headers=self.get_auth_headers_dict()
+            headers=self.make_auth_header()
         )
         resp.raise_for_status()
 
@@ -430,7 +444,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             url=url,
             files=files,
             data=data,
-            headers=self.get_auth_headers_dict()
+            headers=self.make_auth_header()
         )
         resp.raise_for_status()
 
@@ -451,7 +465,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         resp = requests.post(
             url=url,
             data=data,
-            headers=self.get_auth_headers_dict()
+            headers=self.make_auth_header()
         )
         resp.raise_for_status()
         self.process_response(resp)
@@ -474,7 +488,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         resp = requests.post(
             url=url,
             json=data,
-            headers=self.get_auth_headers_dict()
+            headers=self.make_auth_header()
         )
         resp.raise_for_status()
         self.process_response(resp)
@@ -489,9 +503,54 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         resp = requests.post(
             url=url,
             json=data,
-            headers=self.get_auth_headers_dict()
+            headers=self.make_auth_header()
         )
         resp.raise_for_status()
+
+    def on_api_command(self, command, data):
+        if command == "test_auth_token":
+            auth_token = data["auth_token"]
+            success, status_text = self.test_auth_token(token=auth_token)
+            if success:
+                self._settings.set(["authorization_token"],
+                                   auth_token, force=True)
+                self._settings.save(force=True)
+
+            return flask.jsonify({"success": success, "text": status_text})
+        if command == "set_enabled":
+            previous_enabled = self._settings.get(["enabled"])
+            self._settings.set(["enabled"], not previous_enabled, force=True)
+            self._settings.save(force=True)
+            is_enabled = self._settings.get(["enabled"])
+            return flask.jsonify({"success": True, "enabled": is_enabled})
+        if command == "set_config_print":
+            previous_config_print = self._settings.get(["config_print"])
+            self._settings.set(
+                ["config_print"], not previous_config_print, force=True)
+            self._settings.save(force=True)
+            is_config_print = not previous_config_print
+            return flask.jsonify({"success": True, "config_print_enabled": is_config_print})
+
+    def test_auth_token(self, token):
+        url = self.get_ping_url()
+        success = False
+        status_text = "Oh no! An unknown error occurred."
+        try:
+            resp = requests.get(
+                url=url,
+                headers=self.make_auth_header(token=token)
+            )
+            success = resp.ok
+            if resp.status_code == 200:
+                status_text = "All is tickety boo! Your token is valid."
+            elif resp.status_code == 401:
+                status_text = "Whoopsie. That token is invalid."
+            else:
+                status_text = "Oh no! An unknown error occurred."
+        except:
+            # TODO: Catch the correct exceptions
+            status_text = "Connection error. Please check OctoPrint\'s internet connection"
+        return success, status_text
 
     def is_new_job(self):
         if self.has_job():
