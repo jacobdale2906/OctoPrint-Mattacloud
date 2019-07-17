@@ -218,12 +218,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     time.sleep(1)
                     next
 
-            if self.ws:
-                msg = self.ws_data()
-                self.ws.send_msg(msg)
+                if self.ws:
+                    msg = self.ws_data()
+                    self.ws.send_msg(msg)
 
-            if self.len_img_lst < len(self.img_lst):
-                pass
+                if self.len_img_lst < len(self.img_lst):
+                    pass
 
             time.sleep(1)
 
