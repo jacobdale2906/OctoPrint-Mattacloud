@@ -1,6 +1,7 @@
-import websocket
-import logging
 import json
+import logging
+
+import websocket
 
 _logger = logging.getLogger(__name__)
 

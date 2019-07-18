@@ -4,15 +4,16 @@
 
 from __future__ import absolute_import
 
-import os
-import time
-import json
-import threading
-import requests
-import datetime
-import flask
 import cgi
+import datetime
 import io
+import json
+import os
+import threading
+import time
+
+import flask
+import requests
 from watchdog.observers import Observer
 
 import octoprint.plugin
@@ -29,23 +30,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                        octoprint.plugin.SimpleApiPlugin,
                        octoprint.plugin.EventHandlerPlugin):
 
-    # def get_settings_defaults(self):
-    #     return dict(
-    #         base_url="https://mattalabs.com/",
-    #         authorization_token="e.g. w1il4li2am2ca1xt4on91",
-    #         snapshot_dir="/home/pi/.octoprint/data/octolapse/snapshots/",
-    #         upload_dir="/home/pi/.octoprint/uploads/",
-    #         snapshot_count=0,
-    #         enabled=True,
-    #         config_print=False,
-    #     )
-
     def get_settings_defaults(self):
         return dict(
             base_url="https://mattalabs.com/",
             authorization_token="e.g. w1il4li2am2ca1xt4on91",
-            snapshot_dir="/Users/douglas/Library/Application Support/OctoPrint/data/octolapse/snapshots/",
-            upload_dir="/Users/douglas/Library/Application Support/OctoPrint/uploads/",
+            snapshot_dir="/home/pi/.octoprint/data/octolapse/snapshots/",
+            upload_dir="/home/pi/.octoprint/uploads/",
             snapshot_count=0,
             enabled=True,
             config_print=False,
@@ -151,13 +141,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             token = self.get_auth_token()
         return {"Authorization": "Token {}".format(token)}
 
-    def auth_token_header(self, token=None):
-        if not token:
-            token = self.get_auth_token()
-        return "Authorization: Token {}".format(token)
-
     def on_after_startup(self):
-        self._logger.info("Starting OctoPrint-Mattacloud Plugin...")
+        self._logger.debug("Starting OctoPrint-Mattacloud Plugin...")
         self.img_lst = []
         self.len_img_lst = 0
         self.new_print_job = False
@@ -173,8 +158,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self.ws_connect()
 
     def on_event(self, event, payload):
-        self._logger.info("Event: " + str(event))
-        self._logger.info("Payload: " + str(payload))
         if self.is_enabled() and hasattr(self, "ws"):
             msg = self.event_ws_data(event, payload)
             self.ws.send_msg(msg)
@@ -256,7 +239,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         observer.join()
 
     def ws_connect(self):
-        self._logger.info("Connecting websocket")
+        self._logger.debug("Connecting websocket")
         self.ws = Socket(on_message=lambda ws, msg: self.ws_on_message(ws, msg),
                          on_close=lambda ws: self.ws_on_close(ws),
                          url=self.get_ws_url(),
@@ -264,15 +247,14 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ws_thread = threading.Thread(target=self.ws.run)
         ws_thread.daemon = True
         ws_thread.start()
-        self._logger.info("Started websocket")
+        self._logger.debug("Started websocket")
 
     def ws_on_close(self, ws):
-        self._logger.info("Closing websocket...")
+        self._logger.debug("Closing websocket...")
         self.ws.disconnect()
         self.ws = None
 
     def ws_on_message(self, ws, msg):
-        self._logger.info("Message... {}".format(msg))
         json_msg = json.loads(msg)
         if "cmd" in json_msg:
             self.handle_cmds(json_msg)
@@ -373,20 +355,17 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     offsets = json_msg["offsets"]
                     self._printer.set_temperature_offset(offset=offsets)
             if json_msg["cmd"].lower() == "upload_request":
-                self._logger.info("Upload Request")
                 if "id" in json_msg:
                     self.post_upload_request(file_id=json_msg["id"])
 
     def process_response(self, resp):
         # TODO: Handle different types of response
-        self._logger.info(resp)
+        self._logger.debug(resp)
         content_disposition = resp.headers["Content-Disposition"]
         value, params = cgi.parse_header(content_disposition)
         filename = params["filename"]
-        self._logger.info(filename)
         stream = io.StringIO(resp.text)
         stream_wrapper = StreamWrapper(filename, stream)
-        self._logger.info(stream_wrapper)
         # Destination both local and SD card.
         self._file_manager.add_file(
             destination="local", path=filename, file_object=stream_wrapper)
@@ -428,7 +407,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         resp.raise_for_status()
 
     def post_img(self, img=None):
-        self._logger.info("Posting image")
+        self._logger.debug("Posting image")
         if not self.is_setup_complete():
             self._logger.info("Printer not ready")
             return
@@ -451,7 +430,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         resp.raise_for_status()
 
     def post_data(self, data=None):
-        self._logger.info("Posting data")
+        self._logger.debug("Posting data")
         if not self.is_setup_complete():
             self._logger.warning("Printer not ready")
             return
@@ -473,7 +452,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self.process_response(resp)
 
     def post_upload_request(self, file_id):
-        self._logger.info("Posting upload request")
+        self._logger.debug("Posting upload request")
         if not self.is_setup_complete():
             self._logger.warning("Printer not ready")
             return
@@ -520,7 +499,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         return True
 
     def on_api_command(self, command, data):
-        self._logger.info("ON API COMMAND")
         if command == "test_auth_token":
             auth_token = data["auth_token"]
             success, status_text = self.test_auth_token(token=auth_token)
@@ -545,7 +523,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def test_auth_token(self, token):
         url = self.get_ping_url()
-        self._logger.info(url)
         success = False
         status_text = "Oh no! An unknown error occurred."
         try:
@@ -554,7 +531,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 url=url,
                 headers=self.make_auth_header(token=token)
             )
-            self._logger.info(resp)
             success = resp.ok
             if resp.status_code == 200:
                 status_text = "All is tickety boo! Your token is valid."
@@ -581,7 +557,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 self.set_snapshot_count(0)
 
     def loop(self):
-        self._logger.info("In loop")
         while True:
             if self.is_enabled():
                 if not self.is_setup_complete():
@@ -591,7 +566,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
                 self.is_new_job()
                 if self.ws:
-                    self._logger.info("Websocketing")
                     msg = self.ws_data()
                     self.ws.send_msg(msg)
 
