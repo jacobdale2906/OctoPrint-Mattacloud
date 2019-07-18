@@ -65,24 +65,22 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ))
 
     def get_printer_data(self):
-        # self._logger.info("Fetching printer data")
         return self._printer.get_current_data()
 
     def get_current_job(self):
-        # self._logger.info("Fetching job data")
         return self._printer.get_current_job()
 
     def get_printer_temps(self):
-        # self._logger.info("Fetching temperature data")
         return self._printer.get_current_temperatures()
 
     def get_files(self):
-        # self._logger.info("Fetching file list")
         return self._file_manager.list_files(recursive=True)
 
+    # TODO: Improve URL creation
+    # Should write a urljoin function
     def get_base_url(self):
         if not self._settings.get(["base_url"]):
-            self._logger.info("No base URL in OctoPrint settings")
+            self._logger.warning("No base URL in OctoPrint settings")
             return None
 
         url = self._settings.get(["base_url"])
