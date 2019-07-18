@@ -1,6 +1,9 @@
 import re
+import logging
 
 from watchdog.events import PatternMatchingEventHandler
+
+_logger = logging.getLogger("octoprint.plugins.mattacloud")
 
 
 class ImageHandler(PatternMatchingEventHandler):
@@ -78,6 +81,8 @@ class ImageHandler(PatternMatchingEventHandler):
         event.src_path
             path/to/observed/file
         """
+        _logger.debug("Appending image path to list")
+        _logger.debug(event.src_path)
         if self.path_lst == []:
             self.path_lst.append(event.src_path)
         else:
