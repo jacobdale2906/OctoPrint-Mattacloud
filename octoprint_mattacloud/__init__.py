@@ -94,13 +94,11 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
     def get_api_url(self):
         base_url = self.get_base_url()
         url = base_url + "/api"
-        self._logger.info(url)
         return url
 
     def get_ws_url(self):
         api_url = self.get_api_url()
         url = api_url + "/ws/printer/"
-        self._logger.info(url)
         url = url.replace("http", "ws")
         return url
 
@@ -140,7 +138,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         return {"Authorization": "Token {}".format(token)}
 
     def on_after_startup(self):
-        self._logger.debug("Starting OctoPrint-Mattacloud Plugin...")
+        self._logger.info("Starting OctoPrint-Mattacloud Plugin...")
         self.img_lst = []
         self.len_img_lst = 0
         self.new_print_job = False
@@ -237,7 +235,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         observer.join()
 
     def ws_connect(self):
-        self._logger.debug("Connecting websocket")
+        self._logger.info("Connecting websocket")
         self.ws = Socket(on_message=lambda ws, msg: self.ws_on_message(ws, msg),
                          on_close=lambda ws: self.ws_on_close(ws),
                          url=self.get_ws_url(),
@@ -245,10 +243,10 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ws_thread = threading.Thread(target=self.ws.run)
         ws_thread.daemon = True
         ws_thread.start()
-        self._logger.debug("Started websocket")
+        self._logger.info("Started websocket")
 
     def ws_on_close(self, ws):
-        self._logger.debug("Closing websocket...")
+        self._logger.info("Closing websocket...")
         self.ws.disconnect()
         self.ws = None
 
@@ -358,7 +356,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def process_response(self, resp):
         # TODO: Handle different types of response
-        self._logger.debug(resp)
         content_disposition = resp.headers["Content-Disposition"]
         value, params = cgi.parse_header(content_disposition)
         filename = params["filename"]
@@ -405,9 +402,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         resp.raise_for_status()
 
     def post_img(self, img=None):
-        self._logger.debug("Posting image")
+        self._logger.info("Posting image")
         if not self.is_setup_complete():
-            self._logger.info("Printer not ready")
+            self._logger.warning("Printer not ready")
             return
 
         url = self.get_img_url()
@@ -428,7 +425,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         resp.raise_for_status()
 
     def post_data(self, data=None):
-        self._logger.debug("Posting data")
+        self._logger.info("Posting data")
         if not self.is_setup_complete():
             self._logger.warning("Printer not ready")
             return
@@ -450,7 +447,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self.process_response(resp)
 
     def post_upload_request(self, file_id):
-        self._logger.debug("Posting upload request")
+        self._logger.info("Posting upload request")
         if not self.is_setup_complete():
             self._logger.warning("Printer not ready")
             return
@@ -524,7 +521,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         success = False
         status_text = "Oh no! An unknown error occurred."
         try:
-            self._logger.info(self.make_auth_header(token=token))
             resp = requests.get(
                 url=url,
                 headers=self.make_auth_header(token=token)
@@ -564,6 +560,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
                 self.is_new_job()
                 if self.ws:
+                    self._logger.debug("Websocketing")
                     msg = self.ws_data()
                     self.ws.send_msg(msg)
 
@@ -576,7 +573,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
             time.sleep(1)
 
-__plugin_name__ = 'Mattacloud'
+__plugin_name__ = "Mattacloud"
 
 
 def __plugin_load__():
@@ -584,5 +581,5 @@ def __plugin_load__():
     __plugin_implementation__ = MattacloudPlugin()
     global __plugin_hooks__
     __plugin_hooks__ = {
-        'octoprint.plugin.softwareupdate.check_config': __plugin_implementation__.get_update_information
+        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
     }
