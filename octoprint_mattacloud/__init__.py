@@ -277,13 +277,13 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             if json_msg["cmd"].lower() == "toggle":
                 self._printer.toggle_pause_print()
             if json_msg["cmd"].lower() == "print":
-                if "file" in json_msg:
+                if "file" in json_msg and "loc" in json_msg:
                     file_to_print = json_msg["file"]
                     on_sd = True if json_msg["loc"].lower() == "sd" else False
                     self._printer.select_file(
                         json_msg["file"], sd=on_sd, printAfterSelect=True)
             if json_msg["cmd"].lower() == "select":
-                if "file" in json_msg:
+                if "file" in json_msg and "loc" in json_msg:
                     file_to_print = json_msg["file"]
                     on_sd = True if json_msg["loc"].lower() == "sd" else False
                     self._printer.select_file(json_msg["file"], sd=on_sd)
@@ -352,7 +352,21 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     self._printer.set_temperature_offset(offset=offsets)
             if json_msg["cmd"].lower() == "upload_request":
                 if "id" in json_msg:
-                    self.post_upload_request(file_id=json_msg["id"])
+                    path = self.post_upload_request(file_id=json_msg["id"])
+                    # TODO: Handle analysis for SD card files
+                    is_analysed = self._file_manager.has_analysis("local", path)
+                    if not is_analysed:
+                        pass
+            if json_msg["cmd"].lower() == "delete":
+                if "file" in json_msg and "loc" in json_msg and "type" in json_msg:
+                    file_to_delete = json_msg["file"]
+                    location = "sd" if json_msg["loc"].lower() == "sd" else "local"
+                    if json_msg["type"] == "file":
+                        self._file_manager.remove_file(location, file_to_delete)
+                    elif json_msg["type"] == "folder":
+                        self._file_manager.remove_folder(location, file_to_delete)
+                    else:
+                        self._logger.error("Incorrect type {} provided".format(json_msg["type"]))
 
     def process_response(self, resp):
         # TODO: Handle different types of response
