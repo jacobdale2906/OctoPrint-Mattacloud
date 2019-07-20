@@ -17,6 +17,7 @@ import requests
 from watchdog.observers import Observer
 
 import octoprint.plugin
+from octoprint.filemanager import FileDestinations
 from octoprint.filemanager.util import StreamWrapper
 
 from .watcher import ImageHandler
@@ -263,6 +264,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             "timestamp": self.make_timestamp(),
             "files": self.get_files(),
             "job": self.get_current_job(),
+            "config": 1 if self.is_config_print() else 0,
         }
         return data
 
@@ -354,9 +356,17 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 if "id" in json_msg:
                     path = self.post_upload_request(file_id=json_msg["id"])
                     # TODO: Handle analysis for SD card files
-                    is_analysed = self._file_manager.has_analysis("local", path)
+                    is_analysed = self._file_manager.has_analysis(FileDestinations.LOCAL, path)
                     if not is_analysed:
                         pass
+            if json_msg["cmd"].lower() == "new_folder":
+                if "folder" in json_msg and "loc" in json_msg:
+                    folder_name = json_msg["folder"]
+                    # TODO: Destination both local and SD card.
+                    self._file_manager.add_folder(destination=FileDestinations.LOCAL,
+                                                  path=folder_name,
+                                                  ignore_existing=True,
+                                                  display=None)
             if json_msg["cmd"].lower() == "delete":
                 if "file" in json_msg and "loc" in json_msg and "type" in json_msg:
                     file_to_delete = json_msg["file"]
@@ -376,8 +386,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         stream = io.StringIO(resp.text)
         stream_wrapper = StreamWrapper(filename, stream)
         # Destination both local and SD card.
-        self._file_manager.add_file(
-            destination="local", path=filename, file_object=stream_wrapper)
+        self._file_manager.add_file(destination=FileDestinations.LOCAL,
+                                    path=filename,
+                                    file_object=stream_wrapper)
 
     def make_timestamp(self):
         dt = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
