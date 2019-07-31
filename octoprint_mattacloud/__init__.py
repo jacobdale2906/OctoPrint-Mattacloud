@@ -18,7 +18,7 @@ from watchdog.observers import Observer
 
 import octoprint.plugin
 from octoprint.filemanager import FileDestinations
-from octoprint.filemanager.util import StreamWrapper
+from octoprint.filemanager.util import StreamWrapper, DiskFileWrapper
 
 from .watcher import ImageHandler
 from .ws import Socket
@@ -353,28 +353,63 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     offsets = json_msg["offsets"]
                     self._printer.set_temperature_offset(offset=offsets)
             if json_msg["cmd"].lower() == "upload_request":
-                if "id" in json_msg:
+                # TODO: Add loc to server side
+                self._logger.info("upload_request")
+                self._logger.info(json_msg)
+                if "id" in json_msg and "loc" in json_msg:
+                    if json_msg["loc"].lower() == "sd":
+                        location = FileDestinations.SDCARD
+                    elif json_msg["loc"].lower() == "local":
+                        location = FileDestinations.LOCAL
+                    else:
+                        # TODO: Handle this error
+                        location = FileDestinations.LOCAL
+                        self._logger.error("Invalid file destination")
                     path = self.post_upload_request(file_id=json_msg["id"])
+                    self._logger.info(path)
+                    self._logger.info(self._file_manager._printer_profile_manager.get_default())
+                    self._logger.info(self._file_manager._printer_profile_manager)
+                    # result = self._file_manager.analyse(destination=location, path=path)
+                    # self._logger.info(result)
                     # TODO: Handle analysis for SD card files
-                    is_analysed = self._file_manager.has_analysis(FileDestinations.LOCAL, path)
+                    is_analysed = self._file_manager.has_analysis(destination=location,
+                                                                  path=path)
+                    self._logger.info(is_analysed)
                     if not is_analysed:
                         pass
             if json_msg["cmd"].lower() == "new_folder":
                 if "folder" in json_msg and "loc" in json_msg:
                     folder_name = json_msg["folder"]
+                    if json_msg["loc"].lower() == "sd":
+                        location = FileDestinations.SDCARD
+                    elif json_msg["loc"].lower() == "local":
+                        location = FileDestinations.LOCAL
+                    else:
+                        # TODO: Handle this error
+                        location = FileDestinations.LOCAL
+                        self._logger.error("Invalid file destination")
                     # TODO: Destination both local and SD card.
-                    self._file_manager.add_folder(destination=FileDestinations.LOCAL,
+                    self._file_manager.add_folder(destination=location,
                                                   path=folder_name,
                                                   ignore_existing=True,
                                                   display=None)
             if json_msg["cmd"].lower() == "delete":
                 if "file" in json_msg and "loc" in json_msg and "type" in json_msg:
                     file_to_delete = json_msg["file"]
-                    location = "sd" if json_msg["loc"].lower() == "sd" else "local"
+                    if json_msg["loc"].lower() == "sd":
+                        location = FileDestinations.SDCARD
+                    elif json_msg["loc"].lower() == "local":
+                        location = FileDestinations.LOCAL
+                    else:
+                        # TODO: Handle this error
+                        location = FileDestinations.LOCAL
+                        self._logger.error("Invalid file destination")
                     if json_msg["type"] == "file":
-                        self._file_manager.remove_file(location, file_to_delete)
+                        self._file_manager.remove_file(destination=location,
+                                                       path=file_to_delete)
                     elif json_msg["type"] == "folder":
-                        self._file_manager.remove_folder(location, file_to_delete)
+                        self._file_manager.remove_folder(destination=location,
+                                                         path=file_to_delete)
                     else:
                         self._logger.error("Incorrect type {} provided".format(json_msg["type"]))
 
@@ -383,12 +418,38 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         content_disposition = resp.headers["Content-Disposition"]
         value, params = cgi.parse_header(content_disposition)
         filename = params["filename"]
-        stream = io.StringIO(resp.text)
+        file_content = resp.text.replace("\\n", "\n")
+        stream = io.StringIO(file_content, newline="\n")
         stream_wrapper = StreamWrapper(filename, stream)
+
+        try:
+            future_path, future_filename = self._file_manager.sanitize(FileDestinations.LOCAL, filename)
+        except:
+            future_path = None
+            future_filename = None
+        future_full_path = self._file_manager.join_path(FileDestinations.LOCAL, future_path, future_filename)
+        future_full_path_in_storage = self._file_manager.path_in_storage(FileDestinations.LOCAL, future_full_path)
+
+        if not self._printer.can_modify_file(future_full_path_in_storage, False):
+            return
+
+        reselect = self._printer.is_current_file(future_full_path_in_storage, False)
         # Destination both local and SD card.
-        self._file_manager.add_file(destination=FileDestinations.LOCAL,
-                                    path=filename,
-                                    file_object=stream_wrapper)
+        path = self._file_manager.add_file(destination=FileDestinations.LOCAL,
+                                           path=filename,
+                                           file_object=stream_wrapper,
+                                           allow_overwrite=True)
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+            except:
+                pass
+
+        if reselect:
+            self._printer.select_file(self._file_manager.path_on_disk(FileDestinations.LOCAL,
+                                                                      added_file),
+                                      False)
+        return path
 
     def make_timestamp(self):
         dt = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -410,21 +471,27 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             gcode_name = job_info.get("file", {}).get("name")
             upload_dir = self._settings.get(["upload_dir"])
             path = upload_dir + gcode_name
-            gcode = open(path, "rb")
+            if os.path.exists(path):
+                try:
+                    with open(path, "rb") as gcode:
+                        url = self.get_gcode_url()
 
-        url = self.get_gcode_url()
+                        files = {
+                            "gcode": gcode,
+                        }
 
-        files = {
-            "gcode": gcode,
-        }
+                        resp = requests.post(
+                            url=url,
+                            files=files,
+                            data=data,
+                            headers=self.make_auth_header()
+                        )
+                        resp.raise_for_status()
 
-        resp = requests.post(
-            url=url,
-            files=files,
-            data=data,
-            headers=self.make_auth_header()
-        )
-        resp.raise_for_status()
+                except (OSError, IOError) as e:
+                    self._logger.error("Failed to open gcode file: {}".format(path))
+            else:
+                self._logger.error("Gcode file does not exist: {}".format(path))
 
     def post_img(self, img=None):
         self._logger.info("Posting image")
@@ -433,6 +500,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             return
 
         url = self.get_img_url()
+
+        if not img:
+            pass
 
         files = {
             "img": img,
@@ -492,7 +562,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             headers=self.make_auth_header()
         )
         resp.raise_for_status()
-        self.process_response(resp)
+        path = self.process_response(resp)
 
         data = {
             "timestamp": self.make_timestamp(),
@@ -507,6 +577,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             headers=self.make_auth_header()
         )
         resp.raise_for_status()
+        return path
 
     def get_api_commands(self):
         return dict(
