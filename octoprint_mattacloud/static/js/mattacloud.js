@@ -31,6 +31,35 @@ $(function () {
         });
     }
 
+    $("#ws_reconnect_btn").click(function (event) {
+        $('#ws_reconnect_btn_spin').show();
+        ws_reconnect();
+    });
+
+    ws_reconnect = function () {
+        var data = {
+            command: "ws_reconnect",
+        };
+        $.ajax({
+            url: "./api/plugin/mattacloud",
+            type: "POST",
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            dataType: "json",
+            success: function (status) {
+                var token_test_response = document.getElementById("ws_reconnect_response");
+                token_test_response.classList.remove("text-error");
+                token_test_response.classList.remove("text-success");
+                if (status.success) {
+                    token_test_response.classList.add("text-success");
+                } else {
+                    token_test_response.classList.add("text-error");
+                }
+                token_test_response.innerHTML = status.text;
+                $('#ws_reconnect_btn_spin').hide();
+            },
+        });
+    }
 
     function MattacloudViewModel(parameters) {
         var self = this;
@@ -45,15 +74,16 @@ $(function () {
         self.enabled_value = ko.observable();
         self.snapshot_count_value = ko.observable();
         self.config_print = ko.observable();
+        self.ws_connected = ko.observable();
 
         self.enabled = ko.pureComputed(function () {
             if (self.enabled_value()) {
                 if (self.config_print()) {
-                    return 'Mattacloud - Running Configuration';
+                    return 'mattacloud plugin - running (configuration print)';
                 }
-                return 'Mattacloud - Running';
+                return 'mattacloud plugin - running';
             }
-            return 'Mattacloud - Disabled';
+            return 'mattacloud plugin - disabled';
         }, self);
 
         self.status = ko.pureComputed(function () {
@@ -64,6 +94,13 @@ $(function () {
                 return 'Status: Mattacloud is enabled and idle.';
             }
             return 'Status: Mattacloud is disabled.';
+        }, self);
+
+        self.ws_status = ko.pureComputed(function () {
+            if (self.ws_connected()) {
+                return 'Status: Connected to the mattacloud.';
+            }
+            return 'Status: Disconnected.';
         }, self);
 
         self.snapshot_count = function () {
@@ -120,6 +157,7 @@ $(function () {
             self.upload_dir(self.settings.settings.plugins.mattacloud.upload_dir());
             self.config_print(self.settings.settings.plugins.mattacloud.config_print());
             self.enabled_value(self.settings.settings.plugins.mattacloud.enabled());
+            self.ws_connected(self.settings.settings.plugins.mattacloud.ws_connected());
         }
     }
 

@@ -40,6 +40,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             snapshot_count=0,
             enabled=True,
             config_print=False,
+            ws_connected=False,
         )
 
     def get_assets(self):
@@ -156,8 +157,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def on_event(self, event, payload):
         if self.is_enabled() and hasattr(self, "ws"):
-            msg = self.event_ws_data(event, payload)
-            self.ws.send_msg(msg)
+            if self.ws:
+                msg = self.event_ws_data(event, payload)
+                self.ws.send_msg(msg)
 
     def event_ws_data(self, event, payload):
         data = self.ws_data()
@@ -245,11 +247,23 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ws_thread.daemon = True
         ws_thread.start()
         self._logger.info("Started websocket")
+        if self.is_ws_connected():
+            self._settings.set(["ws_connected"], True, force=True)
+            self._settings.save(force=True)
+
+    def is_ws_connected(self):
+        connected = False
+        if self.ws:
+            if self.ws.connected:
+                connected = True
+        return connected
 
     def ws_on_close(self, ws):
         self._logger.info("Closing websocket...")
         self.ws.disconnect()
         self.ws = None
+        self._settings.set(["ws_connected"], False, force=True)
+        self._settings.save(force=True)
 
     def ws_on_message(self, ws, msg):
         json_msg = json.loads(msg)
@@ -584,6 +598,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             test_auth_token=["auth_token"],
             set_enabled=[],
             set_config_print=[],
+            ws_reconnect=[],
         )
 
     def is_api_adminonly(self):
@@ -598,6 +613,20 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                                    auth_token, force=True)
                 self._settings.save(force=True)
             return flask.jsonify({"success": success, "text": status_text})
+        if command == "ws_reconnect":
+            if not self.is_ws_connected():
+                self.ws_connect()
+                if self.is_ws_connected():
+                    status_text = "Successfully connected to mattacloud."
+                    success = True
+                else:
+                    status_text = "Failed to connect to mattacloud."
+                    success = False
+            else:
+                status_text = "Already connected to mattacloud."
+                success = True
+            return flask.jsonify({"success": success, "text": status_text})
+
         if command == "set_enabled":
             previous_enabled = self._settings.get(["enabled"])
             self._settings.set(["enabled"], not previous_enabled, force=True)
@@ -650,7 +679,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         while True:
             if self.is_enabled():
                 if not self.is_setup_complete():
-                    self._logger.warning("Invalid URL or Authorisation Token")
+                    self._logger.warning("Invalid URL, Authorization Token or Spookiness")
                     time.sleep(1)
                     next
 

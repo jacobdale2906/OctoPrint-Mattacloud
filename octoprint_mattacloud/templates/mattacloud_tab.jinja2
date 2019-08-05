@@ -2,7 +2,7 @@
     <div class="panel-heading ol-heading">
         <div class="row-fluid">
             <div class="span11">
-                <h4 data-bind="text: enabled">Mattacloud</h4>
+                <h4 data-bind="text: enabled">mattacloud plugin</h4>
             </div>
             <div class="text-right">
                 <label class="toggle-switch-fa-sm" >
@@ -14,7 +14,9 @@
     </div>
     <div class="panel-body" id="tab_plugin_mattalcoud_panel_body">
         <div>
-        <p data-bind="text: status">Status: </p>
+        <p data-bind="text: ws_status">Status: </p>
+        <button id="ws_reconnect_btn" class="btn btn-primary test-btn" type="button"><i id="ws_reconnect_btn_spin" class="fa fa-spinner fa-spin" style="display: none;"></i>Reconnect</button>
+        <div id="ws_reconnect_response"></div>
         </div>
         <h4>Printer Information: </h4>
         <div>
