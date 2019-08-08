@@ -40,6 +40,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             snapshot_count=0,
             enabled=True,
             config_print=False,
+            ws_connected=False,
         )
 
     def get_assets(self):
@@ -156,8 +157,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def on_event(self, event, payload):
         if self.is_enabled() and hasattr(self, "ws"):
-            msg = self.event_ws_data(event, payload)
-            self.ws.send_msg(msg)
+            if self.ws:
+                msg = self.event_ws_data(event, payload)
+                self.ws.send_msg(msg)
 
     def event_ws_data(self, event, payload):
         data = self.ws_data()
@@ -237,7 +239,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def ws_connect(self):
         self._logger.info("Connecting websocket")
-        self.ws = Socket(on_message=lambda ws, msg: self.ws_on_message(ws, msg),
+        self.ws = Socket(on_open=lambda ws: self.ws_on_open(ws),
+                         on_message=lambda ws, msg: self.ws_on_message(ws, msg),
                          on_close=lambda ws: self.ws_on_close(ws),
                          url=self.get_ws_url(),
                          token=self.get_auth_token())
@@ -246,10 +249,24 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ws_thread.start()
         self._logger.info("Started websocket")
 
+    def is_ws_connected(self):
+        connected = False
+        if self.ws:
+            if self.ws.connected():
+                connected = True
+        return connected
+
+    def ws_on_open(self, ws):
+        self._logger.info("Opening websocket...")
+        self._settings.set(["ws_connected"], True, force=True)
+        self._settings.save(force=True)
+
     def ws_on_close(self, ws):
         self._logger.info("Closing websocket...")
         self.ws.disconnect()
         self.ws = None
+        self._settings.set(["ws_connected"], False, force=True)
+        self._settings.save(force=True)
 
     def ws_on_message(self, ws, msg):
         json_msg = json.loads(msg)
@@ -480,18 +497,32 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                             "gcode": gcode,
                         }
 
-                        resp = requests.post(
-                            url=url,
-                            files=files,
-                            data=data,
-                            headers=self.make_auth_header()
-                        )
-                        resp.raise_for_status()
+                        try:
+                            resp = requests.post(
+                                url=url,
+                                files=files,
+                                data=data,
+                                headers=self.make_auth_header()
+                            )
+                            resp.raise_for_status()
+                        except requests.exceptions.Timeout as e:
+                            self._logger.error("Timeout for url: %s", url)
+                            self._logger.error("Exception: %s", e)
+                        except requests.exceptions.TooManyRedirects as e:
+                            self._logger.error("Too Many Redirects")
+                            self._logger.error("Exception: %s", e)
+                        except requests.exceptions.HTTPError as e:
+                            self._logger.error("HTTP Error")
+                            self._logger.error("Exception: %s", e)
+                        except requests.exceptions.RequestException as e:
+                            self._logger.error("Generic Request Exception")
+                            self._logger.error("Exception: %s", e)
 
                 except (OSError, IOError) as e:
-                    self._logger.error("Failed to open gcode file: {}".format(path))
+                    self._logger.error("Failed to open gcode file: %s", path)
+                    self._logger.error("Exception: %s", e)
             else:
-                self._logger.error("Gcode file does not exist: {}".format(path))
+                self._logger.error("Gcode file does not exist: %s", path)
 
     def post_img(self, img=None):
         self._logger.info("Posting image")
@@ -511,13 +542,26 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         data = {
             "timestamp": self.make_timestamp(),
         }
-        resp = requests.post(
-            url=url,
-            files=files,
-            data=data,
-            headers=self.make_auth_header()
-        )
-        resp.raise_for_status()
+        try:
+            resp = requests.post(
+                url=url,
+                files=files,
+                data=data,
+                headers=self.make_auth_header()
+            )
+            resp.raise_for_status()
+        except requests.exceptions.Timeout as e:
+            self._logger.error("Timeout for url: %s", url)
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.TooManyRedirects as e:
+            self._logger.error("Too Many Redirects")
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.HTTPError as e:
+            self._logger.error("HTTP Error")
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.RequestException as e:
+            self._logger.error("Generic Request Exception")
+            self._logger.error("Exception: %s", e)
 
     def post_data(self, data=None):
         self._logger.info("Posting data")
@@ -532,20 +576,35 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             }
 
         url = self.get_data_url()
+        try:
+            resp = requests.post(
+                url=url,
+                data=data,
+                headers=self.make_auth_header()
+            )
+            resp.raise_for_status()
+            self.process_response(resp)
 
-        resp = requests.post(
-            url=url,
-            data=data,
-            headers=self.make_auth_header()
-        )
-        resp.raise_for_status()
-        self.process_response(resp)
+        except requests.exceptions.Timeout as e:
+            self._logger.error("Timeout for url: %s", url)
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.TooManyRedirects as e:
+            self._logger.error("Too Many Redirects")
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.HTTPError as e:
+            self._logger.error("HTTP Error")
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.RequestException as e:
+            self._logger.error("Generic Request Exception")
+            self._logger.error("Exception: %s", e)
 
     def post_upload_request(self, file_id):
         self._logger.info("Posting upload request")
         if not self.is_setup_complete():
             self._logger.warning("Printer not ready")
             return
+
+        path = None
 
         data = {
             "timestamp": self.make_timestamp(),
@@ -556,27 +615,56 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         url = self.get_request_url()
 
-        resp = requests.post(
-            url=url,
-            json=data,
-            headers=self.make_auth_header()
-        )
-        resp.raise_for_status()
-        path = self.process_response(resp)
+        try:
+            resp = requests.post(
+                url=url,
+                json=data,
+                headers=self.make_auth_header()
+            )
+            resp.raise_for_status()
+            path = self.process_response(resp)
 
-        data = {
-            "timestamp": self.make_timestamp(),
-            "status": "success",
-            "type": "file",
-            "file_id": file_id,
-        }
+            data = {
+                "timestamp": self.make_timestamp(),
+                "status": "success",
+                "type": "file",
+                "file_id": file_id,
+            }
 
-        resp = requests.post(
-            url=url,
-            json=data,
-            headers=self.make_auth_header()
-        )
-        resp.raise_for_status()
+            try:
+                resp = requests.post(
+                    url=url,
+                    json=data,
+                    headers=self.make_auth_header()
+                )
+                resp.raise_for_status()
+
+            except requests.exceptions.Timeout as e:
+                self._logger.error("Timeout for url: %s", url)
+                self._logger.error("Exception: %s", e)
+            except requests.exceptions.TooManyRedirects as e:
+                self._logger.error("Too Many Redirects")
+                self._logger.error("Exception: %s", e)
+            except requests.exceptions.HTTPError as e:
+                self._logger.error("HTTP Error")
+                self._logger.error("Exception: %s", e)
+            except requests.exceptions.RequestException as e:
+                self._logger.error("Generic Request Exception")
+                self._logger.error("Exception: %s", e)
+
+        except requests.exceptions.Timeout as e:
+            self._logger.error("Timeout for url: %s", url)
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.TooManyRedirects as e:
+            self._logger.error("Too Many Redirects")
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.HTTPError as e:
+            self._logger.error("HTTP Error")
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.RequestException as e:
+            self._logger.error("Generic Request Exception")
+            self._logger.error("Exception: %s", e)
+
         return path
 
     def get_api_commands(self):
@@ -584,6 +672,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             test_auth_token=["auth_token"],
             set_enabled=[],
             set_config_print=[],
+            ws_reconnect=[],
         )
 
     def is_api_adminonly(self):
@@ -591,6 +680,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def on_api_command(self, command, data):
         if command == "test_auth_token":
+            self._logger.info("PING")
             auth_token = data["auth_token"]
             success, status_text = self.test_auth_token(token=auth_token)
             if success:
@@ -598,6 +688,21 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                                    auth_token, force=True)
                 self._settings.save(force=True)
             return flask.jsonify({"success": success, "text": status_text})
+        if command == "ws_reconnect":
+            if not self.is_ws_connected():
+                self.ws_connect()
+                if self.is_ws_connected():
+                    status_text = "Successfully connected to mattacloud."
+                    success = True
+                else:
+                    status_text = "Failed to connect to mattacloud."
+                    success = False
+            else:
+                status_text = "Already connected to mattacloud."
+                success = True
+            self._logger.info(self._settings.get(["ws_connected"]))
+            return flask.jsonify({"success": success, "text": status_text})
+
         if command == "set_enabled":
             previous_enabled = self._settings.get(["enabled"])
             self._settings.set(["enabled"], not previous_enabled, force=True)
@@ -628,9 +733,23 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 status_text = "Whoopsie. That token is invalid."
             else:
                 status_text = "Oh no! An unknown error occurred."
-        except:
-            # TODO: Catch the correct exceptions
+        except requests.exceptions.Timeout as e:
+            self._logger.error("Timeout for url: %s", url)
+            self._logger.error("Exception: %s", e)
             status_text = "Connection error. Please check OctoPrint\'s internet connection"
+        except requests.exceptions.TooManyRedirects as e:
+            self._logger.error("Too Many Redirects")
+            self._logger.error("Exception: %s", e)
+            status_text = "Connection error. Please check OctoPrint\'s internet connection"
+        except requests.exceptions.HTTPError as e:
+            self._logger.error("HTTP Error")
+            self._logger.error("Exception: %s", e)
+            status_text = "Connection error. Please check OctoPrint\'s internet connection"
+        except requests.exceptions.RequestException as e:
+            self._logger.error("Generic Request Exception")
+            self._logger.error("Exception: %s", e)
+            status_text = "Connection error. Please check OctoPrint\'s internet connection"
+            # TODO: Catch the correct exceptions
         return success, status_text
 
     def is_new_job(self):
@@ -650,7 +769,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         while True:
             if self.is_enabled():
                 if not self.is_setup_complete():
-                    self._logger.warning("Invalid URL or Authorisation Token")
+                    self._logger.warning("Invalid URL, Authorization Token or Spookiness")
                     time.sleep(1)
                     next
 

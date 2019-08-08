@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 152.66 127.2">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #415b76;
+      }
+
+      .cls-2 {
+        fill: none;
+      }
+
+      .cls-3 {
+        fill: #6e88a5;
+      }
+
+      .cls-4 {
+        fill: #14324a;
+      }
+
+      .cls-5 {
+        fill: #a7b359;
+      }
+    </style>
+  </defs>
+  <title>Asset 25</title>
+  <g id="Layer_2" data-name="Layer 2">
+    <g id="Layer_1-2" data-name="Layer 1">
+      <rect class="cls-1" x="25.09" y="-7.61" width="52.3" height="142.44" rx="26.15" ry="26.15" transform="translate(-26.74 39.3) rotate(-33.83)"/>
+      <rect class="cls-1" x="0.01" y="0.02" width="52.3" height="127.18" rx="26.15" ry="26.15"/>
+      <line class="cls-2" x1="4.93" y1="41.45" x2="47.34" y2="10.83"/>
+      <line class="cls-2" x1="48.05" y1="56.49" x2="10.83" y2="4.94"/>
+      <rect class="cls-3" x="100.36" y="0.02" width="52.3" height="127.18" rx="26.15" ry="26.15"/>
+      <line class="cls-2" x1="78.46" y1="101.05" x2="64.58" y2="95.1"/>
+      <line class="cls-2" x1="78.46" y1="55.38" x2="105.54" y2="107.94"/>
+      <rect class="cls-3" x="75.18" y="-7.61" width="52.3" height="142.44" rx="26.15" ry="26.15" transform="translate(150.1 172.86) rotate(-146.17)"/>
+      <path class="cls-4" d="M99.33,86.48,76.34,54l-23,32.48a25,25,0,0,0-1.09,27.45l1.19,1.67a28,28,0,0,0,22.7,11.59h.39A28,28,0,0,0,99.24,115.6l1.18-1.67A25,25,0,0,0,99.33,86.48Z"/>
+      <path class="cls-5" d="M69.05,32,56.79,13.76A8.83,8.83,0,0,1,64.24,0L88.5.33a8.83,8.83,0,0,1,7.22,13.74L83.73,32A8.84,8.84,0,0,1,69.05,32Z"/>
+    </g>
+  </g>
+</svg>

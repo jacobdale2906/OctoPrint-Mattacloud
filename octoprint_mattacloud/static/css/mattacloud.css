@@ -1,1 +1,19 @@
-/* TODO: Have your plugin's CSS files generated to here. */
+.mattalabs-logo-container .mattalabs-logo {
+    width: 100%;
+    height: 100%;
+    background-image: url("../../plugin/mattalabs/static/images/mattalabs_logo.svg");
+    background-size: 150px;
+    background-repeat: no-repeat;
+}
+
+.d-inline-block {
+    display: inline-block;
+}
+
+.toggle-fa {
+    position: relative;
+    display: inline-block;
+    width: 35px;
+    height: 20px;
+    margin-top: 20px;
+}
