@@ -5,3 +5,15 @@
     background-size: 150px;
     background-repeat: no-repeat;
 }
+
+.d-inline-block {
+    display: inline-block;
+}
+
+.toggle-fa {
+    position: relative;
+    display: inline-block;
+    width: 35px;
+    height: 20px;
+    margin-top: 20px;
+}

@@ -1,66 +1,5 @@
 $(function () {
 
-    $("#test_auth_token_btn").click(function (event) {
-        $('#test_auth_token_btn_spin').show();
-        test_auth_token();
-    });
-
-    test_auth_token = function () {
-        var data = {
-            command: "test_auth_token",
-            auth_token: document.getElementById("auth_token_input").value,
-        };
-        $.ajax({
-            url: "./api/plugin/mattacloud",
-            type: "POST",
-            data: JSON.stringify(data),
-            contentType: "application/json",
-            dataType: "json",
-            success: function (status) {
-                var token_test_response = document.getElementById("token_test_response");
-                token_test_response.classList.remove("text-error");
-                token_test_response.classList.remove("text-success");
-                if (status.success) {
-                    token_test_response.classList.add("text-success");
-                } else {
-                    token_test_response.classList.add("text-error");
-                }
-                token_test_response.innerHTML = status.text;
-                $('#test_auth_token_btn_spin').hide();
-            },
-        });
-    }
-
-    $("#ws_reconnect_btn").click(function (event) {
-        $('#ws_reconnect_btn_spin').show();
-        ws_reconnect();
-    });
-
-    ws_reconnect = function () {
-        var data = {
-            command: "ws_reconnect",
-        };
-        $.ajax({
-            url: "./api/plugin/mattacloud",
-            type: "POST",
-            data: JSON.stringify(data),
-            contentType: "application/json",
-            dataType: "json",
-            success: function (status) {
-                var token_test_response = document.getElementById("ws_reconnect_response");
-                token_test_response.classList.remove("text-error");
-                token_test_response.classList.remove("text-success");
-                if (status.success) {
-                    token_test_response.classList.add("text-success");
-                } else {
-                    token_test_response.classList.add("text-error");
-                }
-                token_test_response.innerHTML = status.text;
-                $('#ws_reconnect_btn_spin').hide();
-            },
-        });
-    }
-
     function MattacloudViewModel(parameters) {
         var self = this;
 
@@ -76,14 +15,89 @@ $(function () {
         self.config_print = ko.observable();
         self.ws_connected = ko.observable();
 
+        self.ws_status = ko.observable();
+
+        var test_auth_token_btn = document.getElementById("test_auth_token_btn");
+        test_auth_token_btn.onclick = function () {
+            var test_auth_token_btn_spin = document.getElementById("test_auth_token_btn_spin");
+            test_auth_token_btn_spin.style.display = "inline-block";
+            test_auth_token();
+        };
+    
+        test_auth_token = function () {
+            var data = {
+                command: "test_auth_token",
+                auth_token: document.getElementById("auth_token_input").value,
+            };
+            $.ajax({
+                url: "./api/plugin/mattacloud",
+                type: "POST",
+                data: JSON.stringify(data),
+                contentType: "application/json",
+                dataType: "json",
+                success: function (status) {
+                    var token_test_response = document.getElementById("token_test_response");
+                    token_test_response.classList.remove("text-error");
+                    token_test_response.classList.remove("text-success");
+                    if (status.success) {
+                        token_test_response.classList.add("text-success");
+                    } else {
+                        token_test_response.classList.add("text-error");
+                    }
+                    token_test_response.innerHTML = status.text;
+                    test_auth_token_btn_spin.style.display = "none";
+                },
+            });
+        }
+    
+        var ws_reconnect_btn = document.getElementById("ws_reconnect_btn");
+        ws_reconnect_btn.onclick = function () {
+            var ws_reconnect_btn_spin = document.getElementById("ws_reconnect_btn_spin");
+            ws_reconnect_btn_spin.style.display = "inline-block";
+            ws_reconnect();
+        };
+    
+        ws_reconnect = function () {
+            var data = {
+                command: "ws_reconnect",
+            };
+            $.ajax({
+                url: "./api/plugin/mattacloud",
+                type: "POST",
+                data: JSON.stringify(data),
+                contentType: "application/json",
+                dataType: "json",
+                success: function (result) {
+                    var token_test_response = document.getElementById("ws_reconnect_response");
+                    token_test_response.classList.remove("text-error");
+                    token_test_response.classList.remove("text-success");
+                    var status = 'Status: Disconnected.';
+                    if (result.success) {
+                        token_test_response.classList.add("text-success");
+                        status = 'Status: Connected to the mattacloud.';
+                    } else {
+                        token_test_response.classList.add("text-error");
+                    }
+                    token_test_response.innerHTML = result.text;
+                    ws_reconnect_btn_spin.style.display = "none";
+                    self.ws_connected(result.success);
+                    
+                    self.ws_status(status);
+                    console.log(self.ws_connected());
+                    console.log(self.ws_status());
+                    console.log(self.settings.settings.plugins.mattacloud.ws_connected());
+                },
+            });
+        }
+
         self.enabled = ko.pureComputed(function () {
             if (self.enabled_value()) {
                 if (self.config_print()) {
-                    return 'mattacloud plugin - running (configuration print)';
+                    return 'Mattacloud Plugin - Running (Configuration Print)';
                 }
-                return 'mattacloud plugin - running';
+                return 'Mattacloud Plugin - Running';
             }
-            return 'mattacloud plugin - disabled';
+            return 'Mattacloud Plugin - Disabled';
         }, self);
 
         self.status = ko.pureComputed(function () {
@@ -95,17 +109,6 @@ $(function () {
             }
             return 'Status: Mattacloud is disabled.';
         }, self);
-
-        self.ws_status = ko.pureComputed(function () {
-            if (self.ws_connected()) {
-                return 'Status: Connected to the mattacloud.';
-            }
-            return 'Status: Disconnected.';
-        }, self);
-
-        self.snapshot_count = function () {
-            console.log("Snapshot count");
-        };
 
         self.toggle_mattacloud = function () {
             var data = {
