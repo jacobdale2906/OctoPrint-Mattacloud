@@ -1,9 +1,26 @@
+.mattalabs-tab-container {
+    padding: 12px 0px 0px 0px;
+}
+
 .mattalabs-logo-container .mattalabs-logo {
     width: 100%;
     height: 100%;
-    background-image: url("../../plugin/mattalabs/static/images/mattalabs_logo.svg");
-    background-size: 150px;
+    background-image: url("../images/mattalabs_logo.svg");
+    background-size: 75px;
     background-repeat: no-repeat;
+}
+
+.mattalabs-title {
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.mattalabs-logo-container {
+    width: 75px;
+    height: 64px;
+    padding-right: 12px;
+    vertical-align: middle;
+    display: inline-block;
 }
 
 .d-inline-block {
@@ -16,4 +33,8 @@
     width: 35px;
     height: 20px;
     margin-top: 20px;
+}
+
+.auth-token-input {
+    width: 491px
 }

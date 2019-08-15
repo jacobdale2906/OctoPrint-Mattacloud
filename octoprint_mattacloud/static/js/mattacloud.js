@@ -3,7 +3,7 @@ $(function () {
     function MattacloudViewModel(parameters) {
         var self = this;
 
-        self.loginState = parameters[0];
+        self.login_state = parameters[0];
         self.settings = parameters[1];
 
         self.auth_token = ko.observable();
@@ -14,6 +14,8 @@ $(function () {
         self.snapshot_count_value = ko.observable();
         self.config_print = ko.observable();
         self.ws_connected = ko.observable();
+
+        self.is_octoprint_admin = ko.observable(self.login_state.isAdmin());
 
         self.ws_status = ko.observable();
 
@@ -173,7 +175,7 @@ $(function () {
         // This is a list of dependencies to inject into the plugin, the order which you request
         // here is the order in which the dependencies will be injected into your view model upon
         // instantiation via the parameters argument
-        ["loginStateViewModel", "settingsViewModel"],
+        ["login_stateViewModel", "settingsViewModel"],
 
         // Finally, this is the list of selectors for all elements we want this view model to be bound to.
         ["#tab_plugin_mattacloud", "#tab_plugin_mattalcoud_panel_heading", "#tab_plugin_mattalcoud_panel_body"]
