@@ -2,6 +2,8 @@
 
 Automatic and intelligent error detection and process monitoring for your OctoPrint enabled 3D printer with full remote control and management from anywhere. Additionally, receive notifications and updates via your chosen communications medium, alerting you of failures and updating you on your 3D print.
 
+Learn more about **mattacloud** here: [https://mattalabs.com/products/mattacloud/](https://mattalabs.com/products/mattacloud/)
+
 ### Error detection and process monitoring
 
 3D printers are not the most reliable of machines. All of us have suffered from errors whilst printing and many users feel _handcuffed_ to their printers, having to constantly check every 5 minutes to make sure that the print is _still_ okay! If this sounds familiar... hopefully this plugin will help.
@@ -35,7 +37,7 @@ At present, the plugin enables you to do the following:
 
 ### Notifications and updates
 
-By installing this plugin and linking your printer to a mattacloud account you can receive useful notifications and updates concerning your 3D printer via various channels. When an error occurs during the 3D printing process, you will receive an alert with an attached image showing the error in addition to current progress, material used and other useful stats. You can then deside to take action. You can also set up other checkpoints to receive notifications, such as upon object completion, or when a print has reached the half way mark. 
+By installing this plugin and linking your printer to a **mattacloud** account you can receive useful notifications and updates concerning your 3D printer via various channels. When an error occurs during the 3D printing process, you will receive an alert with an attached image showing the error in addition to current progress, material used and other useful stats. You can then deside to take action. You can also set up other checkpoints to receive notifications, such as upon object completion, or when a print has reached the half way mark. 
 
 The communication channels which are currently supported are:
 
@@ -44,7 +46,7 @@ The communication channels which are currently supported are:
 - WhatsApp (Beta)
 - Facebook Messenger (Beta)
 
-## Setup
+## Plugin Installation
 
 Install via the bundled [OctoPrint Plugin Manager](https://github.com/foosel/OctoPrint/wiki/Plugin:-Plugin-Manager)
 or manually using this URL:
@@ -55,7 +57,13 @@ After downloading the zip file of the latest release, install it using the OctoP
 
 ## Setup
 
-**TODO:** Describe the plugin's configuration options.
+The setup progress takes less than 5 minutes and consists of 5 simple steps. If you follow these, all the benefits of **mattacloud** will apply to your printer.
+
+1. Join the **mattacloud** free trial or if you already have just login [here](https://mattalabs.com/accounts/signup/). (Free trial lasts for the duration of beta testing)
+2. Select your membership type - at this stage it is recommended to choose the free beta membership.
+3. Add a printer to your **mattacloud** by following the wizard and setup guide.
+4. After installing the OctoPrint-Mattacloud Plugin on your OctoPrint enabled device, copy the authentication token from your newly created printer on the **mattacloud** into the authentication token input box presented in the OctoPrint-Mattacloud Plugin tab. You can see all of your printers and their respective tokens [here](https://mattalabs.com/accounts/printers/list/).
+5. Test your token using the _Test Token_ button adjacent to the input box.
 
 ## Report problems
 
