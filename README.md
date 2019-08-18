@@ -35,6 +35,8 @@ At present, the plugin enables you to do the following:
 
 ### Notifications and updates
 
+By installing this plugin and linking your printer to a mattacloud account you can receive useful notifications and updates concerning your 3D printer via various channels. When an error occurs during the 3D printing process, you will receive an alert with an attached image showing the error in addition to current progress, material used and other useful stats. You can then deside to take action. You can also set up other checkpoints to receive notifications, such as upon object completion, or when a print has reached the half way mark. 
+
 The communication channels which are currently supported are:
 
 - Email
@@ -44,14 +46,23 @@ The communication channels which are currently supported are:
 
 ## Setup
 
-Install via the bundled [Plugin Manager](https://github.com/foosel/OctoPrint/wiki/Plugin:-Plugin-Manager)
+Install via the bundled [OctoPrint Plugin Manager](https://github.com/foosel/OctoPrint/wiki/Plugin:-Plugin-Manager)
 or manually using this URL:
 
     https://github.com/dougbrion/OctoPrint-Mattacloud/archive/master.zip
 
-**TODO:** Describe how to install your plugin, if more needs to be done than just installing it via pip or through
-the plugin manager.
+After downloading the zip file of the latest release, install it using the OctoPrint Plugin Manager.
 
-## Configuration
+## Setup
 
-**TODO:** Describe your plugin's configuration options (if any).
+**TODO:** Describe the plugin's configuration options.
+
+## Report problems
+
+If something does not appear to be working correctly and you think you may have found a bug in the OctoPrint-Mattacloud plugin, please create an issue on the official page [here](https://github.com/dougbrion/OctoPrint-Mattacloud/issues). In this way your issue can be understood and fixed quickly.
+
+## Data
+
+## License
+
+View the [OctoPrint-Mattacloud plugin license](https://github.com/dougbrion/OctoPrint-Mattacloud/blob/master/LICENSE)
