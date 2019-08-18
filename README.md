@@ -1,14 +1,14 @@
 # OctoPrint-Mattacloud
 
-Automatic and intelligent error detection and process monitoring for your OctoPrint enabled 3D printer with full remote control and management from anywhere. Additionally, receive notifications and updates via your chosen communications medium, alerting you of failures and updating you on your 3D print.
+Automatic and intelligent error detection and process monitoring for your OctoPrint-enabled 3D printer, with full remote control, management and access from anywhere. Additionally, receive notifications and updates via your chosen communication medium, alerting you of failures and keeping you updated on the state of the 3D print. Overview your print history and gain insights into filament use, print times and your printer reliability.
 
-Learn more about **mattacloud** here: [https://mattalabs.com/products/mattacloud/](https://mattalabs.com/products/mattacloud/)
+Learn more about **mattacloud** and its features - [https://mattalabs.com/products/mattacloud/](https://mattalabs.com/products/mattacloud/)
 
 ### Error detection and process monitoring
 
-3D printers are not the most reliable of machines. All of us have suffered from errors whilst printing and many users feel _handcuffed_ to their printers, having to constantly check every 5 minutes to make sure that the print is _still_ okay! If this sounds familiar... hopefully this plugin will help.
+3D printers are not the most reliable of machines. All of us have suffered from errors whilst printing and many users find themselves _handcuffed_ to their printers, having to constantly check the printer every 5 minutes to make sure that the print is _still_ okay! If this sounds familiar to you... hopefully this plugin will help.
 
-Numerous computer vision techniques are used to determine if an error has occurred during your 3D print. Using a mixture of machine learning, 3D printing heuristics and the direct comparison of g-code to the current state of the 3D print, an error can be reliably determined in an image of the 3D print.
+Numerous computer vision techniques are used to determine if an error has occurred during your 3D print. Using a mixture of machine learning, 3D printing heuristics and the direct comparison of g-code to the current state of the 3D print, an errors are reliably determined in an image of the print.
 
 Errors that are currently detected reliably:
 
@@ -37,7 +37,7 @@ At present, the plugin enables you to do the following:
 
 ### Notifications and updates
 
-By installing this plugin and linking your printer to a **mattacloud** account you can receive useful notifications and updates concerning your 3D printer via various channels. When an error occurs during the 3D printing process, you will receive an alert with an attached image showing the error in addition to current progress, material used and other useful stats. You can then deside to take action. You can also set up other checkpoints to receive notifications, such as upon object completion, or when a print has reached the half way mark. 
+By installing this plugin and linking a printer to your **mattacloud** account, you can receive useful notifications and updates concerning your 3D printer via various channels. When an error occurs during the 3D printing process, you will receive an alert with an attached image showing the error in addition to current progress, material usage and other useful statistics; you can then deside to take action. Additionally, you can also set up other checkpoints to receive notifications, such as upon object completion, or when a print has reached the half way mark. 
 
 The communication channels which are currently supported are:
 
@@ -57,9 +57,9 @@ After downloading the zip file of the latest release, install it using the OctoP
 
 ## Setup
 
-The setup progress takes less than 5 minutes and consists of 5 simple steps. If you follow these, all the benefits of **mattacloud** will apply to your printer.
+The setup progress takes less than 5 minutes and consists of 5 simple steps. If you follow these, all the benefits of **mattacloud** will apply to your printer. Happy printing!
 
-1. Join the **mattacloud** free trial or if you already have just login [here](https://mattalabs.com/accounts/signup/). (Free trial lasts for the duration of beta testing)
+1. Join the **mattacloud** free trial ([here](https://mattalabs.com/accounts/signup/)) or if you already have, just [login](https://mattalabs.com/accounts/login/). (Free trial lasts for the duration of beta testing.)
 2. Select your membership type - at this stage it is recommended to choose the free beta membership.
 3. Add a printer to your **mattacloud** by following the wizard and setup guide.
 4. After installing the OctoPrint-Mattacloud Plugin on your OctoPrint enabled device, copy the authentication token from your newly created printer on the **mattacloud** into the authentication token input box presented in the OctoPrint-Mattacloud Plugin tab. You can see all of your printers and their respective tokens [here](https://mattalabs.com/accounts/printers/list/).
@@ -67,7 +67,7 @@ The setup progress takes less than 5 minutes and consists of 5 simple steps. If 
 
 ## Report problems
 
-If something does not appear to be working correctly and you think you may have found a bug in the OctoPrint-Mattacloud plugin, please create an issue on the official page [here](https://github.com/dougbrion/OctoPrint-Mattacloud/issues). In this way your issue can be understood and fixed quickly.
+If something does not appear to be working correctly and you think you may have found a bug in the OctoPrint-Mattacloud Plugin, please create an issue on the official page [here](https://github.com/dougbrion/OctoPrint-Mattacloud/issues). In this way your issue can be understood and fixed quickly.
 
 ## Data
 
