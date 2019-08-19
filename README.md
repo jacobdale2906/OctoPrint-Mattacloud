@@ -22,6 +22,13 @@ Errors that are currently detected reliably:
 
 ### Remote control and management
 
+<p align="center">
+    <img src="extras/images/mattacloud.png" alt="Mattacloud - Printer Overview">
+    <br/>
+    <i>Overview of 3 3D printers on the <b>mattacloud</b> dashboard.</i>
+    <br/>
+</p>
+
 Access your 3D printer from anywhere in the world (provided that there is an internet connection...) via the OctoPrint-Mattacloud Plugin.
 
 At present, the plugin enables you to do the following:
@@ -36,6 +43,13 @@ At present, the plugin enables you to do the following:
 - See your prints progress (time remaining and percentage completion)
 
 ### Notifications and updates
+
+<p align="center">
+    <img src="extras/images/communication.png" alt="Mattacloud - Communication">
+    <br/>
+    <i>Keep informed by receiving notifications and updates from the <b>mattacloud</b> to your device.</i>
+    <br/>
+</p>
 
 By installing this plugin and linking a printer to your **mattacloud** account, you can receive useful notifications and updates concerning your 3D printer via various channels. When an error occurs during the 3D printing process, you will receive an alert with an attached image showing the error in addition to current progress, material usage and other useful statistics; you can then deside to take action. Additionally, you can also set up other checkpoints to receive notifications, such as upon object completion, or when a print has reached the half way mark. 
 
