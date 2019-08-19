@@ -36,5 +36,9 @@
 }
 
 .auth-token-input {
-    width: 491px
+    width: 477px;
+}
+
+.test-btn {
+    margin-bottom: 10px;
 }

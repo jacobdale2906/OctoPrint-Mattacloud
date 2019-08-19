@@ -1,6 +1,6 @@
 <!-- View this when OctoPrint user is not logged in -->
-<div class="row-fluid mattalabs-tab-container" data-bind="if: !is_octoprint_admin()">
-    <div id="octoprint-user-logged-out">
+<div id="octoprint-user-logged-out" class="row-fluid mattalabs-tab-container" data-bind="if: !is_octoprint_admin()">
+    <div>
         <div class="mattalabs-logo-container">
             <div class="mattalabs-logo"></div>
         </div>
@@ -17,8 +17,8 @@
 </div>
 
 <!-- View this when MattaCloud is not setup -->
-<div class="row-fluid mattalabs-tab-container" data-bind="if: !is_octoprint_admin()">
-    <div id="octoprint-user-logged-out">
+<div id="mattacloud-logged-out" class="row-fluid mattalabs-tab-container" data-bind="if: !is_octoprint_admin()">
+    <div>
         <div class="mattalabs-logo-container">
             <div class="mattalabs-logo"></div>
         </div>
@@ -35,10 +35,10 @@
         <div class="control-group">
             <label class="control-label">{{ _('Authorisation Token') }}</label>
             <div class="controls">
-                <input id="auth_token_input" type="text" class="input-auth-token auth-token-input d-inline-block" data-bind="value: settings.plugins.mattacloud.authorization_token">
-                <button id="test_auth_token_btn" class="btn btn-primary test-btn test-auth-token d-inline-block" type="button"><i id="test_auth_token_btn_spin" class="fa fa-spinner fa-spin" style="display: none;"></i>Test Token</button>
-                <small>Sign up to mattacloud to bring intelligence to your 3D printer. <a href="https://mattalabs.com/accounts/signup/">Sign Up</a></small><br>
-                <div id="token_test_response" class="test_token"></div>
+                <input id="tab_auth_token_input" type="text" class="input-auth-token auth-token-input d-inline-block" data-bind="value: settings.plugins.mattacloud.authorization_token">
+                <button id="tab_test_auth_token_btn" class="btn btwn-primary test-btn test-auth-token d-inline-block" type="button"><i id="test_auth_token_btn_spin" class="fa fa-spinner fa-spin" style="display: none;"></i>Test Token</button>
+                <div id="tab_token_test_response" class="test_token"></div>
+                <small>Sign up to mattacloud to bring intelligence to your 3D printer. <a target="_blank" href="https://mattalabs.com/accounts/signup/">Sign Up</a></small><br>
             </div>
         </div>
     </div>
