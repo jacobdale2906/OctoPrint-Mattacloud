@@ -718,9 +718,13 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             return flask.jsonify({"success": True, "config_print_enabled": is_config_print})
 
     def test_auth_token(self, token):
+        # TODO: Returns Success if the token is an empty string!!!!
         url = self.get_ping_url()
         success = False
         status_text = "Oh no! An unknown error occurred."
+        if token == "":
+            status_text = "Please enter a token."
+            return success, status_text
         try:
             resp = requests.get(
                 url=url,

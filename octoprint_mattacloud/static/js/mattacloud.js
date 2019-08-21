@@ -1,5 +1,41 @@
 $(function () {
 
+    // This is for the settings page
+    var settings_test_btn = document.getElementById("settings_test_btn");
+    settings_test_btn.onclick = function () {
+        console.log("Settings Test Auth Token Button");
+        var settings_test_btn_spin = document.getElementById("settings_test_btn_spin");
+        settings_test_btn_spin.style.display = "inline-block";
+        settings_test_token();
+    };
+
+    settings_test_token = function () {
+        var data = {
+            command: "test_auth_token",
+            auth_token: document.getElementById("settings_token_input").value,
+        };
+        console.log(data);
+        $.ajax({
+            url: "./api/plugin/mattacloud",
+            type: "POST",
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            dataType: "json",
+            success: function (status) {
+                var settings_test_response = document.getElementById("settings_test_response");
+                settings_test_response.classList.remove("text-error");
+                settings_test_response.classList.remove("text-success");
+                if (status.success) {
+                    settings_test_response.classList.add("text-success");
+                } else {
+                    settings_test_response.classList.add("text-error");
+                }
+                settings_test_response.innerHTML = status.text;
+                settings_test_btn_spin.style.display = "none";
+            },
+        });
+    }
+
     function MattacloudViewModel(parameters) {
         var self = this;
 
@@ -18,39 +54,6 @@ $(function () {
         self.is_octoprint_admin = ko.observable(self.login_state.isAdmin());
 
         self.ws_status = ko.observable();
-
-        var test_auth_token_btn = document.getElementById("test_auth_token_btn");
-        test_auth_token_btn.onclick = function () {
-            var test_auth_token_btn_spin = document.getElementById("test_auth_token_btn_spin");
-            test_auth_token_btn_spin.style.display = "inline-block";
-            test_auth_token();
-        };
-    
-        test_auth_token = function () {
-            var data = {
-                command: "test_auth_token",
-                auth_token: document.getElementById("auth_token_input").value,
-            };
-            $.ajax({
-                url: "./api/plugin/mattacloud",
-                type: "POST",
-                data: JSON.stringify(data),
-                contentType: "application/json",
-                dataType: "json",
-                success: function (status) {
-                    var token_test_response = document.getElementById("token_test_response");
-                    token_test_response.classList.remove("text-error");
-                    token_test_response.classList.remove("text-success");
-                    if (status.success) {
-                        token_test_response.classList.add("text-success");
-                    } else {
-                        token_test_response.classList.add("text-error");
-                    }
-                    token_test_response.innerHTML = status.text;
-                    test_auth_token_btn_spin.style.display = "none";
-                },
-            });
-        }
     
         var ws_reconnect_btn = document.getElementById("ws_reconnect_btn");
         ws_reconnect_btn.onclick = function () {
@@ -169,15 +172,8 @@ $(function () {
     // This is how our plugin registers itself with the application, by adding some configuration
     // information to the global variable OCTOPRINT_VIEWMODELS
     OCTOPRINT_VIEWMODELS.push([
-        // This is the constructor to call for instantiating the plugin
         MattacloudViewModel,
-
-        // This is a list of dependencies to inject into the plugin, the order which you request
-        // here is the order in which the dependencies will be injected into your view model upon
-        // instantiation via the parameters argument
-        ["login_stateViewModel", "settingsViewModel"],
-
-        // Finally, this is the list of selectors for all elements we want this view model to be bound to.
-        ["#tab_plugin_mattacloud", "#tab_plugin_mattalcoud_panel_heading", "#tab_plugin_mattalcoud_panel_body"]
+        ["loginStateViewModel", "settingsViewModel"],
+        ["#settings_plugin_mattacloud",]
     ]);
 });
