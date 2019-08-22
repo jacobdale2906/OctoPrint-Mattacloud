@@ -1,0 +1,2 @@
+Upon websocket reconnect appears to not actually reconnect.
+Starts sending data when pressing reboot.

@@ -691,6 +691,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         if command == "ws_reconnect":
             if not self.is_ws_connected():
                 self.ws_connect()
+                # TODO: Improve this... hacky wait for the websocket to connect
+                time.sleep(2)
                 if self.is_ws_connected():
                     status_text = "Successfully connected to mattacloud."
                     success = True
@@ -718,9 +720,13 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             return flask.jsonify({"success": True, "config_print_enabled": is_config_print})
 
     def test_auth_token(self, token):
+        # TODO: Returns Success if the token is an empty string!!!!
         url = self.get_ping_url()
         success = False
         status_text = "Oh no! An unknown error occurred."
+        if token == "":
+            status_text = "Please enter a token."
+            return success, status_text
         try:
             resp = requests.get(
                 url=url,
@@ -736,19 +742,19 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         except requests.exceptions.Timeout as e:
             self._logger.error("Timeout for url: %s", url)
             self._logger.error("Exception: %s", e)
-            status_text = "Connection error. Please check OctoPrint\'s internet connection"
+            status_text = "Error. Please check OctoPrint\'s internet connection"
         except requests.exceptions.TooManyRedirects as e:
             self._logger.error("Too Many Redirects")
             self._logger.error("Exception: %s", e)
-            status_text = "Connection error. Please check OctoPrint\'s internet connection"
+            status_text = "Error. Please check OctoPrint\'s internet connection"
         except requests.exceptions.HTTPError as e:
             self._logger.error("HTTP Error")
             self._logger.error("Exception: %s", e)
-            status_text = "Connection error. Please check OctoPrint\'s internet connection"
+            status_text = "Error. Please check OctoPrint\'s internet connection"
         except requests.exceptions.RequestException as e:
             self._logger.error("Generic Request Exception")
             self._logger.error("Exception: %s", e)
-            status_text = "Connection error. Please check OctoPrint\'s internet connection"
+            status_text = "Error. Please check OctoPrint\'s internet connection"
             # TODO: Catch the correct exceptions
         return success, status_text
 
