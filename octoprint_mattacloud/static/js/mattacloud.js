@@ -1,9 +1,50 @@
 $(function () {
 
+    // This is for the settings page
+    var settings_test_btn = document.getElementById("settings_test_btn");
+    settings_test_btn.onclick = function () {
+        console.log("Settings Test Auth Token Button");
+        var settings_test_btn_spin = document.getElementById("settings_test_btn_spin");
+        settings_test_btn_spin.style.display = "inline-block";
+        settings_test_token();
+    };
+
+    settings_test_token = function () {
+        var data = {
+            command: "test_auth_token",
+            auth_token: document.getElementById("settings_token_input").value,
+            url: document.getElementById("settings_url_input").value,
+        };
+        console.log(data);
+        $.ajax({
+            url: "./api/plugin/mattacloud",
+            type: "POST",
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            dataType: "json",
+            success: function (status) {
+                if (status.success) {
+                    new PNotify({
+                        title: gettext("Connection"),
+                        text: gettext(status.text),
+                        type: "success"
+                    });
+                } else {
+                    new PNotify({
+                        title: gettext("Connection"),
+                        text: gettext(status.text),
+                        type: "error"
+                    });
+                }
+                settings_test_btn_spin.style.display = "none";
+            },
+        });
+    }
+
     function MattacloudViewModel(parameters) {
         var self = this;
 
-        self.loginState = parameters[0];
+        self.login_state = parameters[0];
         self.settings = parameters[1];
 
         self.auth_token = ko.observable();
@@ -15,40 +56,9 @@ $(function () {
         self.config_print = ko.observable();
         self.ws_connected = ko.observable();
 
-        self.ws_status = ko.observable();
+        self.is_octoprint_admin = ko.observable(self.login_state.isAdmin());
 
-        var test_auth_token_btn = document.getElementById("test_auth_token_btn");
-        test_auth_token_btn.onclick = function () {
-            var test_auth_token_btn_spin = document.getElementById("test_auth_token_btn_spin");
-            test_auth_token_btn_spin.style.display = "inline-block";
-            test_auth_token();
-        };
-    
-        test_auth_token = function () {
-            var data = {
-                command: "test_auth_token",
-                auth_token: document.getElementById("auth_token_input").value,
-            };
-            $.ajax({
-                url: "./api/plugin/mattacloud",
-                type: "POST",
-                data: JSON.stringify(data),
-                contentType: "application/json",
-                dataType: "json",
-                success: function (status) {
-                    var token_test_response = document.getElementById("token_test_response");
-                    token_test_response.classList.remove("text-error");
-                    token_test_response.classList.remove("text-success");
-                    if (status.success) {
-                        token_test_response.classList.add("text-success");
-                    } else {
-                        token_test_response.classList.add("text-error");
-                    }
-                    token_test_response.innerHTML = status.text;
-                    test_auth_token_btn_spin.style.display = "none";
-                },
-            });
-        }
+        self.ws_status = ko.observable();
     
         var ws_reconnect_btn = document.getElementById("ws_reconnect_btn");
         ws_reconnect_btn.onclick = function () {
@@ -68,24 +78,24 @@ $(function () {
                 contentType: "application/json",
                 dataType: "json",
                 success: function (result) {
-                    var token_test_response = document.getElementById("ws_reconnect_response");
-                    token_test_response.classList.remove("text-error");
-                    token_test_response.classList.remove("text-success");
                     var status = 'Status: Disconnected.';
                     if (result.success) {
-                        token_test_response.classList.add("text-success");
                         status = 'Status: Connected to the mattacloud.';
+                        new PNotify({
+                            title: gettext("Connection"),
+                            text: gettext(result.text),
+                            type: "success"
+                        });
                     } else {
-                        token_test_response.classList.add("text-error");
+                        new PNotify({
+                            title: gettext("Connection"),
+                            text: gettext(result.text),
+                            type: "error"
+                        });
                     }
-                    token_test_response.innerHTML = result.text;
                     ws_reconnect_btn_spin.style.display = "none";
-                    self.ws_connected(result.success);
                     
                     self.ws_status(status);
-                    console.log(self.ws_connected());
-                    console.log(self.ws_status());
-                    console.log(self.settings.settings.plugins.mattacloud.ws_connected());
                 },
             });
         }
@@ -93,12 +103,17 @@ $(function () {
         self.enabled = ko.pureComputed(function () {
             if (self.enabled_value()) {
                 if (self.config_print()) {
-                    return 'Mattacloud Plugin - Running (Configuration Print)';
+                    return 'Mattacloud - Running (Config Print)';
                 }
-                return 'Mattacloud Plugin - Running';
+                return 'Mattacloud - Running';
             }
-            return 'Mattacloud Plugin - Disabled';
+            return 'Mattacloud - Disabled';
         }, self);
+
+        go_to_settings = function () {
+            $('#navbar_show_settings').trigger( "click" );
+            $('#settings_plugin_mattacloud_link a').trigger( "click" );
+        }
 
         self.status = ko.pureComputed(function () {
             if (self.enabled_value()) {
@@ -148,10 +163,14 @@ $(function () {
             return true;
         };
 
-        // This will get called before the HelloWorldViewModel gets bound to the DOM, but after its
-        // dependencies have already been initialized. It is especially guaranteed that this method
-        // gets called _after_ the settings have been retrieved from the OctoPrint backend and thus
-        // the SettingsViewModel been properly populated.
+        update_status_text = function () {
+            var status_text = "Status: Disconnected.";
+            if (self.ws_connected()) {
+                status_text = "Status: Connected to the mattacloud.";
+            }
+            self.ws_status(status_text);
+        }
+
         self.onBeforeBinding = function () {
             self.auth_token(self.settings.settings.plugins.mattacloud.authorization_token());
             self.server_address(self.settings.settings.plugins.mattacloud.base_url());
@@ -161,21 +180,15 @@ $(function () {
             self.config_print(self.settings.settings.plugins.mattacloud.config_print());
             self.enabled_value(self.settings.settings.plugins.mattacloud.enabled());
             self.ws_connected(self.settings.settings.plugins.mattacloud.ws_connected());
+            update_status_text();
         }
     }
 
     // This is how our plugin registers itself with the application, by adding some configuration
     // information to the global variable OCTOPRINT_VIEWMODELS
     OCTOPRINT_VIEWMODELS.push([
-        // This is the constructor to call for instantiating the plugin
         MattacloudViewModel,
-
-        // This is a list of dependencies to inject into the plugin, the order which you request
-        // here is the order in which the dependencies will be injected into your view model upon
-        // instantiation via the parameters argument
         ["loginStateViewModel", "settingsViewModel"],
-
-        // Finally, this is the list of selectors for all elements we want this view model to be bound to.
-        ["#tab_plugin_mattacloud", "#tab_plugin_mattalcoud_panel_heading", "#tab_plugin_mattalcoud_panel_body"]
+        ["#settings_plugin_mattacloud", "#tab_plugin_mattacloud"]
     ]);
 });
