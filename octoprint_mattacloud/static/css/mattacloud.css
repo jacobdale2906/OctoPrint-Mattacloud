@@ -43,10 +43,18 @@
     margin-top: 20px;
 }
 
-.auth-token-input {
+.input-box {
     width: 550px;
 }
 
 .test-btn {
     margin-bottom: 10px;
+}
+
+.toggle-div {
+    float: right;
+}
+
+.right-btn {
+    float: right;
 }

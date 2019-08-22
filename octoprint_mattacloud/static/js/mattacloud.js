@@ -13,6 +13,7 @@ $(function () {
         var data = {
             command: "test_auth_token",
             auth_token: document.getElementById("settings_token_input").value,
+            url: document.getElementById("settings_url_input").value,
         };
         console.log(data);
         $.ajax({
@@ -22,15 +23,19 @@ $(function () {
             contentType: "application/json",
             dataType: "json",
             success: function (status) {
-                var settings_test_response = document.getElementById("settings_test_response");
-                settings_test_response.classList.remove("text-error");
-                settings_test_response.classList.remove("text-success");
                 if (status.success) {
-                    settings_test_response.classList.add("text-success");
+                    new PNotify({
+                        title: gettext("Connection"),
+                        text: gettext(status.text),
+                        type: "success"
+                    });
                 } else {
-                    settings_test_response.classList.add("text-error");
+                    new PNotify({
+                        title: gettext("Connection"),
+                        text: gettext(status.text),
+                        type: "error"
+                    });
                 }
-                settings_test_response.innerHTML = status.text;
                 settings_test_btn_spin.style.display = "none";
             },
         });
@@ -73,24 +78,24 @@ $(function () {
                 contentType: "application/json",
                 dataType: "json",
                 success: function (result) {
-                    var token_test_response = document.getElementById("ws_reconnect_response");
-                    token_test_response.classList.remove("text-error");
-                    token_test_response.classList.remove("text-success");
                     var status = 'Status: Disconnected.';
                     if (result.success) {
-                        token_test_response.classList.add("text-success");
                         status = 'Status: Connected to the mattacloud.';
+                        new PNotify({
+                            title: gettext("Connection"),
+                            text: gettext(result.text),
+                            type: "success"
+                        });
                     } else {
-                        token_test_response.classList.add("text-error");
+                        new PNotify({
+                            title: gettext("Connection"),
+                            text: gettext(result.text),
+                            type: "error"
+                        });
                     }
-                    token_test_response.innerHTML = result.text;
                     ws_reconnect_btn_spin.style.display = "none";
-                    self.ws_connected(result.success);
                     
                     self.ws_status(status);
-                    console.log(self.ws_connected());
-                    console.log(self.ws_status());
-                    console.log(self.settings.settings.plugins.mattacloud.ws_connected());
                 },
             });
         }
@@ -98,12 +103,17 @@ $(function () {
         self.enabled = ko.pureComputed(function () {
             if (self.enabled_value()) {
                 if (self.config_print()) {
-                    return 'Mattacloud Plugin - Running (Configuration Print)';
+                    return 'Mattacloud - Running (Config Print)';
                 }
-                return 'Mattacloud Plugin - Running';
+                return 'Mattacloud - Running';
             }
-            return 'Mattacloud Plugin - Disabled';
+            return 'Mattacloud - Disabled';
         }, self);
+
+        go_to_settings = function () {
+            $('#navbar_show_settings').trigger( "click" );
+            $('#settings_plugin_mattacloud_link a').trigger( "click" );
+        }
 
         self.status = ko.pureComputed(function () {
             if (self.enabled_value()) {
@@ -153,10 +163,14 @@ $(function () {
             return true;
         };
 
-        // This will get called before the HelloWorldViewModel gets bound to the DOM, but after its
-        // dependencies have already been initialized. It is especially guaranteed that this method
-        // gets called _after_ the settings have been retrieved from the OctoPrint backend and thus
-        // the SettingsViewModel been properly populated.
+        update_status_text = function () {
+            var status_text = "Status: Disconnected.";
+            if (self.ws_connected()) {
+                status_text = "Status: Connected to the mattacloud.";
+            }
+            self.ws_status(status_text);
+        }
+
         self.onBeforeBinding = function () {
             self.auth_token(self.settings.settings.plugins.mattacloud.authorization_token());
             self.server_address(self.settings.settings.plugins.mattacloud.base_url());
@@ -166,6 +180,7 @@ $(function () {
             self.config_print(self.settings.settings.plugins.mattacloud.config_print());
             self.enabled_value(self.settings.settings.plugins.mattacloud.enabled());
             self.ws_connected(self.settings.settings.plugins.mattacloud.ws_connected());
+            update_status_text();
         }
     }
 
@@ -174,6 +189,6 @@ $(function () {
     OCTOPRINT_VIEWMODELS.push([
         MattacloudViewModel,
         ["loginStateViewModel", "settingsViewModel"],
-        ["#settings_plugin_mattacloud",]
+        ["#settings_plugin_mattacloud", "#tab_plugin_mattacloud"]
     ]);
 });

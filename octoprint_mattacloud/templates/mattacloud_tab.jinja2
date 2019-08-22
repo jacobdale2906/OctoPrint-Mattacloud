@@ -1,0 +1,42 @@
+<div id="mattacloud" class="row-fluid mattalabs-container">
+    <div>
+        <div class="mattalabs-logo-container">
+            <div class="mattalabs-logo"></div>
+        </div>
+        <h3 class="mattalabs-title" data-bind="text: enabled">Mattacloud Plugin</h3>
+        <div class="text-right toggle-div">
+            <h3>
+                <label class="toggle-switch-fa-sm" >
+                <input type="checkbox" data-bind="checked: enabled_value, click: toggle_mattacloud" >
+                <span class="fa-slider" ><i class="fa icon-off fa-inverse"></i></span>
+                </label>
+            </h3>
+        </div>
+        <hr>
+        <h4>Printer Information: </h4>
+        <div class="row-fluid d-inline-block">
+            <div class="d-inline-block">
+                <p data-bind="text: ws_status">Status: </p>
+            </div>
+            <div class="right-btn">
+                <button id="ws_reconnect_btn" class="btn btn-primary" type="button"><i id="ws_reconnect_btn_spin" class="fa fa-spinner fa-spin" style="display: none;"></i>Reconnect</button>
+            </div>
+        </div>
+        <div>
+            <p>Authorization Token: <span data-bind="text: auth_token"></span></p>
+        </div>
+        <div>
+            <p>Configuration Print:
+                <label class="toggle-switch-fa-sm" >
+                <input type="checkbox" name="config_print" value="config_print" data-bind="checked: config_print, click: set_config_print">
+                <span class="fa-slider" ><i class="fa icon-off fa-inverse"></i></span>
+                </label>
+            </p>
+        </div>
+        <hr>
+        <div>
+            <p>You can configure the settings in the Mattacloud settings page.</p>
+            <div class="btn" data-bind="click: go_to_settings">Open Mattacloud Settings</div>
+        </div>
+    </div>
+</div>
