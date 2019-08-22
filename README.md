@@ -1,5 +1,12 @@
 # OctoPrint-Mattacloud
 
+<p align="center">
+    <img src="extras/images/mattacloud_tab.png" alt="Mattacloud - OctoPrint tab">
+    <br/>
+    <i>Add automatic error detection and remote access for your 3D printer.</i>
+    <br/>
+</p>
+
 Automatic and intelligent error detection and process monitoring for your OctoPrint-enabled 3D printer, with full remote control, management and access from anywhere. Additionally, receive notifications and updates via your chosen communication medium, alerting you of failures and keeping you updated on the state of the 3D print. Overview your print history and gain insights into filament use, print times and your printer reliability.
 
 Learn more about **mattacloud** and its features - [https://mattalabs.com/products/mattacloud/](https://mattalabs.com/products/mattacloud/)
