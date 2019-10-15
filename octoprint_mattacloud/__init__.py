@@ -156,10 +156,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self.ws_connect()
 
     def on_event(self, event, payload):
+        self._logger.info("Event %s %s", event, payload)
         if self.is_enabled() and hasattr(self, "ws"):
             if self.ws:
                 msg = self.event_ws_data(event, payload)
                 self.ws.send_msg(msg)
+                self._logger.info("Sent MSG")
 
     def event_ws_data(self, event, payload):
         data = self.ws_data()
@@ -273,7 +275,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         if "cmd" in json_msg:
             self.handle_cmds(json_msg)
 
-    def ws_data(self):
+    def ws_data(self, extra_data=None):
         # TODO: Customise what is sent depending on requirements
         data = {
             "temperature_data": self.get_printer_temps(),
@@ -283,6 +285,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             "job": self.get_current_job(),
             "config": 1 if self.is_config_print() else 0,
         }
+        if extra_data:
+            data.update(extra_data)
         return data
 
     def handle_cmds(self, json_msg):
@@ -790,7 +794,11 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     self.set_snapshot_count(self.len_img_lst)
                     latest_img = self.get_latest_img()
                     if latest_img:
-                        self.post_img(open(latest_img, "rb"))
+                        try:
+                            with open(latest_img, "rb") as img:
+                                self.post_img(img=img)
+                        except IOError as e:
+                            self._logger.error(e)
 
             time.sleep(1)
 
