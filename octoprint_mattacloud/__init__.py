@@ -840,7 +840,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                         except IOError as e:
                             self._logger.error(e)
                         resp = requests.get(
-                            'http://127.0.0.1:8081/webcam/?action=snapshot',
+                            'http://127.0.0.1:8081/?action=snapshot',
                             stream=True
                         )
                         self._logger.info("Reponse: %s", resp)
