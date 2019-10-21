@@ -22,6 +22,7 @@ from octoprint.filemanager.util import StreamWrapper, DiskFileWrapper
 
 from .watcher import ImageHandler
 from .ws import Socket
+from .camera import capture_snapshot
 
 
 class MattacloudPlugin(octoprint.plugin.StartupPlugin,
@@ -545,7 +546,46 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         data = {
             "timestamp": self.make_timestamp(),
+            "update": 1,
         }
+        try:
+            resp = requests.post(
+                url=url,
+                files=files,
+                data=data,
+                headers=self.make_auth_header()
+            )
+            resp.raise_for_status()
+        except requests.exceptions.Timeout as e:
+            self._logger.error("Timeout for url: %s", url)
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.TooManyRedirects as e:
+            self._logger.error("Too Many Redirects")
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.HTTPError as e:
+            self._logger.error("HTTP Error")
+            self._logger.error("Exception: %s", e)
+        except requests.exceptions.RequestException as e:
+            self._logger.error("Generic Request Exception")
+            self._logger.error("Exception: %s", e)
+
+    def post_raw_img(self, filename, raw_img):
+        self._logger.info("Posting second image")
+        if not self.is_setup_complete():
+            self._logger.warning("Printer not ready")
+            return
+
+        url = self.get_img_url()
+
+        files = {
+            "img": (filename, raw_img),
+        }
+
+        data = {
+            "timestamp": self.make_timestamp(),
+            "update": 0,
+        }
+
         try:
             resp = requests.post(
                 url=url,
@@ -799,6 +839,15 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                                 self.post_img(img=img)
                         except IOError as e:
                             self._logger.error(e)
+                        resp = requests.get(
+                            'http://127.0.0.1:8081/webcam/?action=snapshot',
+                            stream=True
+                        )
+                        if resp.status_code == 200:
+                            filename, ext = os.path.splitext(os.path.basename(latest_img))
+                            basename = '{}-cam2{}'.format(filename, ext)
+                            resp.raw.decode_content = True
+                            self.post_raw_img(filename=basename, raw_img=resp.raw)
 
             time.sleep(1)
 

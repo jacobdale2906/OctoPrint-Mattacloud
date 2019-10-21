@@ -1,6 +1,6 @@
 import requests
 import shutil
-import cv2
+import subprocess
 
 
 def capture_snapshot(endpoint, path):
@@ -14,22 +14,19 @@ def capture_snapshot(endpoint, path):
             shutil.copyfileobj(resp.raw, f)
 
 
-def list_cameras():
-    index = 0
-    arr = []
-    while True:
-        cap = cv2.VideoCapture(index)
-        if not cap.read()[0]:
-            break
-        else:
-            arr.append(index)
-        cap.release()
-        index += 1
-    return arr
+def fswebcam_snapshot(device, img_path, x=1280, y=720):
+    cmd_str = 'fswebcam -d {} -r {}x{} --no-banner'.format(
+        device,
+        x,
+        y,
+    )
+    cmd = cmd_str.split()
+    subprocess.call(cmd + [img_path])
 
 
 def main():
     pass
+
 
 if __name__ == '__main__':
     main()
