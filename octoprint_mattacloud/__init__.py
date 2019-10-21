@@ -843,10 +843,13 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                             'http://127.0.0.1:8081/webcam/?action=snapshot',
                             stream=True
                         )
+                        self._logger.info("Reponse: %s", resp)
                         if resp.status_code == 200:
                             filename, ext = os.path.splitext(os.path.basename(latest_img))
                             basename = '{}-cam2{}'.format(filename, ext)
+                            self._logger.info("Basename: %s", basename)
                             resp.raw.decode_content = True
+                            self._logger.info("Post 2")
                             self.post_raw_img(filename=basename, raw_img=resp.raw)
 
             time.sleep(1)
