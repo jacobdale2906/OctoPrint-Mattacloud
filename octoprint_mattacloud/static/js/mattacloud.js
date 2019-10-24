@@ -44,7 +44,7 @@ $(function () {
     function MattacloudViewModel(parameters) {
         var self = this;
 
-        self.login_state = parameters[0];
+        self.loginState = parameters[0];
         self.settings = parameters[1];
 
         self.auth_token = ko.observable();
@@ -56,7 +56,15 @@ $(function () {
         self.config_print = ko.observable();
         self.ws_connected = ko.observable();
 
-        self.is_octoprint_admin = ko.observable(self.login_state.isAdmin());
+        self.snapshot_url_1 = ko.observable();
+        self.snapshot_url_2 = ko.observable();
+
+        self.temperature_interval = ko.observable();
+        self.vibration_interval = ko.observable();
+        self.camera_1_interval = ko.observable();
+        self.camera_2_interval = ko.observable();
+
+        self.is_octoprint_admin = ko.observable(self.loginState.isAdmin());
 
         self.ws_status = ko.observable();
     
@@ -78,9 +86,9 @@ $(function () {
                 contentType: "application/json",
                 dataType: "json",
                 success: function (result) {
-                    var status = 'Status: Disconnected.';
+                    var status = 'Disconnected.';
                     if (result.success) {
-                        status = 'Status: Connected to the mattacloud.';
+                        status = 'Connected to the mattacloud.';
                         new PNotify({
                             title: gettext("Connection"),
                             text: gettext(result.text),
@@ -118,11 +126,11 @@ $(function () {
         self.status = ko.pureComputed(function () {
             if (self.enabled_value()) {
                 if (self.config_print()) {
-                    return 'Status: Mattacloud is enabled, idle and set to run a configuration print.';
+                    return 'Mattacloud is enabled, idle and set to run a configuration print.';
                 }
-                return 'Status: Mattacloud is enabled and idle.';
+                return 'Mattacloud is enabled and idle.';
             }
-            return 'Status: Mattacloud is disabled.';
+            return 'Mattacloud is disabled.';
         }, self);
 
         self.toggle_mattacloud = function () {
@@ -137,7 +145,7 @@ $(function () {
                 contentType: "application/json",
                 dataType: "json",
                 success: function (status) {
-                    console.log("Enabled status: " + status.enabled);
+                    console.log("Enabled " + status.enabled);
                     self.enabled_value(status.enabled);
                 },
             });
@@ -156,7 +164,7 @@ $(function () {
                 contentType: "application/json",
                 dataType: "json",
                 success: function (status) {
-                    console.log("Config status: " + status.config_print_enabled);
+                    console.log("Config " + status.config_print_enabled);
                     self.config_print(status.config_print_enabled);
                 },
             });
@@ -164,9 +172,9 @@ $(function () {
         };
 
         update_status_text = function () {
-            var status_text = "Status: Disconnected.";
+            var status_text = "Disconnected.";
             if (self.ws_connected()) {
-                status_text = "Status: Connected to the mattacloud.";
+                status_text = "Connected to the mattacloud.";
             }
             self.ws_status(status_text);
         }
@@ -180,6 +188,12 @@ $(function () {
             self.config_print(self.settings.settings.plugins.mattacloud.config_print());
             self.enabled_value(self.settings.settings.plugins.mattacloud.enabled());
             self.ws_connected(self.settings.settings.plugins.mattacloud.ws_connected());
+            self.temperature_interval(self.settings.settings.plugins.mattacloud.temperature_interval());
+            self.vibration_interval(self.settings.settings.plugins.mattacloud.vibration_interval());
+            self.camera_1_interval(self.settings.settings.plugins.mattacloud.camera_1_interval());
+            self.camera_2_interval(self.settings.settings.plugins.mattacloud.camera_2_interval());
+            self.snapshot_url_1(self.settings.settings.plugins.mattacloud.snapshot_url_1());
+            self.snapshot_url_2(self.settings.settings.plugins.mattacloud.snapshot_url_2());
             update_status_text();
         }
     }

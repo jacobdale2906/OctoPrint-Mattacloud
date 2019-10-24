@@ -42,6 +42,13 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             enabled=True,
             config_print=False,
             ws_connected=False,
+            num_cameras=2,
+            camera_1_interval=10,
+            camera_2_interval=10,
+            snapshot_url_1='http://localhost:8080/?action=snapshot',
+            snapshot_url_2='http://localhost:8081/?action=snapshot',
+            vibration_interval=10,
+            temperature_interval=1,
         )
 
     def get_assets(self):

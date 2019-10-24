@@ -12,28 +12,30 @@
                 </label>
             </h3>
         </div>
-        <hr>
-        <h4>Printer Information: </h4>
-        <div class="row-fluid d-inline-block">
+        <h1>Printer Information: </h1>
+        <div class="info-pair row-fluid">
             <div class="d-inline-block">
-                <p data-bind="text: ws_status">Status: </p>
-            </div>
-            <div class="right-btn">
-                <button id="ws_reconnect_btn" class="btn btn-primary" type="button"><i id="ws_reconnect_btn_spin" class="fa fa-spinner fa-spin" style="display: none;"></i>Reconnect</button>
+                <label class="info-label">Status</label>
+                <div class="info-content">
+                    <span data-bind="text: ws_status"></span>
+                    <button id="ws_reconnect_btn" class="btn btn-primary right-btn" type="button"><i id="ws_reconnect_btn_spin" class="fa fa-spinner fa-spin" style="display: none;"></i>Reconnect</button>
+                </div>
             </div>
         </div>
-        <div>
-            <p>Authorization Token: <span data-bind="text: auth_token"></span></p>
+        <div class="info-pair">
+            <label class="info-label">Authorization Token</label>
+            <div class="info-content" data-bind="text: auth_token"></div>
         </div>
-        <div>
-            <p>Configuration Print:
-                <label class="toggle-switch-fa-sm" >
-                <input type="checkbox" name="config_print" value="config_print" data-bind="checked: config_print, click: set_config_print">
-                <span class="fa-slider" ><i class="fa icon-off fa-inverse"></i></span>
+        <div class="info-pair">
+            <label class="info-label">Configuration Print</label>
+            <div class="info-content">
+                <label class="toggle-switch-fa-sm">
+                    <input type="checkbox" name="config_print" value="config_print" data-bind="checked: config_print, click: set_config_print">
+                    <span class="fa-slider"><i class="fa icon-off fa-inverse"></i></span>
                 </label>
-            </p>
+            </div>
         </div>
-        <hr>
+        <h1>Additional Settings: </h1>
         <div>
             <p>You can configure the settings in the Mattacloud settings page.</p>
             <div class="btn" data-bind="click: go_to_settings">Open Mattacloud Settings</div>
