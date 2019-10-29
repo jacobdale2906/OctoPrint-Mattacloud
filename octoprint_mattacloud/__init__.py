@@ -497,9 +497,11 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         if not gcode:
             job_info = self.get_current_job()
+            self._logger.info(job_info)
             gcode_name = job_info.get("file", {}).get("name")
+            gcode_path = job_info.get("file", {}).get("path")
             upload_dir = self._settings.get(["upload_dir"])
-            path = upload_dir + gcode_name
+            path = os.path.join(upload_dir, gcode_path)
             if os.path.exists(path):
                 try:
                     with open(path, "rb") as gcode:
