@@ -258,6 +258,18 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ws_thread.daemon = True
         ws_thread.start()
         self._logger.info("Started websocket")
+        ws_send_data = threading.Thread(target=self.ws_send_data)
+        ws_send_data.daemon = True
+        ws_send_data.start()
+
+    def ws_send_data(self):
+        while True:
+            if self.is_enabled():
+                if self.ws:
+                    self._logger.info("Websocketing")
+                    msg = self.ws_data()
+                    self.ws.send_msg(msg)
+            time.sleep(1)
 
     def is_ws_connected(self):
         connected = False
@@ -780,16 +792,19 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 self.new_print_job = False
         elif self.is_operational():
             self.new_print_job = True
-            if self.img_lst != []:
-                del self.img_lst[:]
-                self.len_img_lst = 0
-                self.set_snapshot_count(0)
+            self.set_snapshot_count(0)
+            # if self.img_lst != []:
+            #     del self.img_lst[:]
+            #     self.len_img_lst = 0
+            #     self.set_snapshot_count(0)
 
     def loop(self):
-        snapshot_count = 0
         camera_1_count = 0
         camera_2_count = 0
         while True:
+            self._logger.info("Loop")
+            self._logger.info(camera_1_count)
+            self._logger.info(camera_2_count)
             if self.is_enabled():
                 if not self.is_setup_complete():
                     self._logger.warning("Invalid URL, Authorization Token or Spookiness")
@@ -797,12 +812,10 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     next
 
                 self.is_new_job()
-                if self.ws:
-                    self._logger.debug("Websocketing")
-                    msg = self.ws_data()
-                    self.ws.send_msg(msg)
 
                 if self.has_job():
+                    self._logger.info("Has Job")
+                    snapshot_count = int(self._settings.get(["snapshot_count"]))
                     if camera_1_count >= int(self._settings.get(["camera_1_interval"])):
                         self._logger.info("CAMERA 1 SNAPSHOT")
                         camera_1_count = 0
@@ -811,13 +824,17 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                                 self._settings.get(["snapshot_url_1"]),
                                 stream=True
                             )
+                            self._logger.info(resp)
                             job_details = self.get_current_job()
                             print_name, _ = os.path.splitext(job_details["file"]["name"])
                             snapshot_name = '{}-{}-cam1.jpg'.format(print_name, snapshot_count)
-                            snapshot_count += 1
+                            self.set_snapshot_count(snapshot_count + 1)
                             resp.raw.decode_content = True
+                            self._logger.info("Decoded")
                             self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=1)
+                            self._logger.info("Posted")
                         except requests.exceptions.RequestException as ex:
+                            self._logger.info("Error")
                             self._logger.error(ex)
 
                     if camera_2_count >= int(self._settings.get(["camera_2_interval"])):
@@ -831,15 +848,16 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                             job_details = self.get_current_job()
                             print_name, _ = os.path.splitext(job_details["file"]["name"])
                             snapshot_name = '{}-{}-cam2.jpg'.format(print_name, snapshot_count)
-                            snapshot_count += 1
+                            self.set_snapshot_count(snapshot_count + 1)
                             resp.raw.decode_content = True
                             self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=0)
                         except requests.exceptions.RequestException as ex:
                             self._logger.error(ex)
 
+                    camera_1_count += 1
+                    camera_2_count += 1
+
             time.sleep(1)
-            camera_1_count += 1
-            camera_2_count += 1
 
 
 __plugin_name__ = "Mattacloud"
