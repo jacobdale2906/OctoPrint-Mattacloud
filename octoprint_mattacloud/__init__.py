@@ -149,11 +149,11 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def on_after_startup(self):
         self._logger.info("Starting OctoPrint-Mattacloud Plugin...")
-        self.img_lst = []
-        self.len_img_lst = 0
+        # self.img_lst = []
+        # self.len_img_lst = 0
         self.new_print_job = False
         self.ws = None
-        dir_path = self.get_octolapse_dir()
+        # dir_path = self.get_octolapse_dir()
         main_thread = threading.Thread(target=self.loop)
         main_thread.daemon = True
         main_thread.start()
@@ -519,15 +519,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                                 headers=self.make_auth_header()
                             )
                             resp.raise_for_status()
-                        except requests.exceptions.Timeout as e:
-                            self._logger.error("Timeout for url: %s", url)
-                            self._logger.error("Exception: %s", e)
-                        except requests.exceptions.TooManyRedirects as e:
-                            self._logger.error("Too Many Redirects")
-                            self._logger.error("Exception: %s", e)
-                        except requests.exceptions.HTTPError as e:
-                            self._logger.error("HTTP Error")
-                            self._logger.error("Exception: %s", e)
                         except requests.exceptions.RequestException as e:
                             self._logger.error("Generic Request Exception")
                             self._logger.error("Exception: %s", e)
@@ -538,7 +529,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             else:
                 self._logger.error("Gcode file does not exist: %s", path)
 
-    def post_img(self, img=None):
+    def post_img(self, img=None, update=1):
         self._logger.info("Posting image")
         if not self.is_setup_complete():
             self._logger.warning("Printer not ready")
@@ -555,7 +546,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         data = {
             "timestamp": self.make_timestamp(),
-            "update": 1,
+            "update": update,
         }
         try:
             resp = requests.post(
@@ -578,7 +569,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             self._logger.error("Generic Request Exception")
             self._logger.error("Exception: %s", e)
 
-    def post_raw_img(self, filename, raw_img):
+    def post_raw_img(self, filename, raw_img, update=0):
         self._logger.info("Posting second image")
         if not self.is_setup_complete():
             self._logger.warning("Printer not ready")
@@ -592,7 +583,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         data = {
             "timestamp": self.make_timestamp(),
-            "update": 0,
+            "update": update,
         }
 
         try:
@@ -692,28 +683,10 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 )
                 resp.raise_for_status()
 
-            except requests.exceptions.Timeout as e:
-                self._logger.error("Timeout for url: %s", url)
-                self._logger.error("Exception: %s", e)
-            except requests.exceptions.TooManyRedirects as e:
-                self._logger.error("Too Many Redirects")
-                self._logger.error("Exception: %s", e)
-            except requests.exceptions.HTTPError as e:
-                self._logger.error("HTTP Error")
-                self._logger.error("Exception: %s", e)
             except requests.exceptions.RequestException as e:
                 self._logger.error("Generic Request Exception")
                 self._logger.error("Exception: %s", e)
 
-        except requests.exceptions.Timeout as e:
-            self._logger.error("Timeout for url: %s", url)
-            self._logger.error("Exception: %s", e)
-        except requests.exceptions.TooManyRedirects as e:
-            self._logger.error("Too Many Redirects")
-            self._logger.error("Exception: %s", e)
-        except requests.exceptions.HTTPError as e:
-            self._logger.error("HTTP Error")
-            self._logger.error("Exception: %s", e)
         except requests.exceptions.RequestException as e:
             self._logger.error("Generic Request Exception")
             self._logger.error("Exception: %s", e)
@@ -792,18 +765,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 status_text = "Whoopsie. That token is invalid."
             else:
                 status_text = "Oh no! An unknown error occurred."
-        except requests.exceptions.Timeout as e:
-            self._logger.error("Timeout for url: %s", url)
-            self._logger.error("Exception: %s", e)
-            status_text = "Error. Please check OctoPrint\'s internet connection"
-        except requests.exceptions.TooManyRedirects as e:
-            self._logger.error("Too Many Redirects")
-            self._logger.error("Exception: %s", e)
-            status_text = "Error. Please check OctoPrint\'s internet connection"
-        except requests.exceptions.HTTPError as e:
-            self._logger.error("HTTP Error")
-            self._logger.error("Exception: %s", e)
-            status_text = "Error. Please check OctoPrint\'s internet connection"
         except requests.exceptions.RequestException as e:
             self._logger.error("Generic Request Exception")
             self._logger.error("Exception: %s", e)
@@ -855,7 +816,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                             snapshot_name = '{}-{}-cam1.jpg'.format(print_name, snapshot_count)
                             snapshot_count += 1
                             resp.raw.decode_content = True
-                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw)
+                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=1)
                         except requests.exceptions.RequestException as ex:
                             self._logger.error(ex)
 
@@ -872,13 +833,14 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                             snapshot_name = '{}-{}-cam2.jpg'.format(print_name, snapshot_count)
                             snapshot_count += 1
                             resp.raw.decode_content = True
-                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw)
+                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=0)
                         except requests.exceptions.RequestException as ex:
                             self._logger.error(ex)
 
             time.sleep(1)
             camera_1_count += 1
             camera_2_count += 1
+
 
 __plugin_name__ = "Mattacloud"
 
