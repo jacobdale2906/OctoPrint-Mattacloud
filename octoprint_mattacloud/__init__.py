@@ -157,10 +157,10 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         main_thread = threading.Thread(target=self.loop)
         main_thread.daemon = True
         main_thread.start()
-        watchdog_thread = threading.Thread(
-            target=self.run_observer, args=(dir_path,))
-        watchdog_thread.daemon = True
-        watchdog_thread.start()
+        # watchdog_thread = threading.Thread(
+        #     target=self.run_observer, args=(dir_path,))
+        # watchdog_thread.daemon = True
+        # watchdog_thread.start()
         self.ws_connect()
 
     def on_event(self, event, payload):
@@ -823,6 +823,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 self.set_snapshot_count(0)
 
     def loop(self):
+        snapshot_count = 0
+        camera_1_count = 0
+        camera_2_count = 0
         while True:
             if self.is_enabled():
                 if not self.is_setup_complete():
@@ -836,30 +839,44 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     msg = self.ws_data()
                     self.ws.send_msg(msg)
 
-                if self.len_img_lst < len(self.img_lst):
-                    self.len_img_lst = len(self.img_lst)
-                    self.set_snapshot_count(self.len_img_lst)
-                    latest_img = self.get_latest_img()
-                    if latest_img:
+                if self.has_job():
+                    if camera_1_count >= int(self._settings.get(["camera_1_interval"])):
+                        self._logger.info("CAMERA 1 SNAPSHOT")
+                        camera_1_count = 0
                         try:
-                            with open(latest_img, "rb") as img:
-                                self.post_img(img=img)
-                        except IOError as e:
-                            self._logger.error(e)
-                        resp = requests.get(
-                            'http://127.0.0.1:8081/?action=snapshot',
-                            stream=True
-                        )
-                        self._logger.info("Reponse: %s", resp)
-                        if resp.status_code == 200:
-                            filename, ext = os.path.splitext(os.path.basename(latest_img))
-                            basename = '{}-cam2{}'.format(filename, ext)
-                            self._logger.info("Basename: %s", basename)
+                            resp = requests.get(
+                                self._settings.get(["snapshot_url_1"]),
+                                stream=True
+                            )
+                            job_details = self.get_current_job()
+                            print_name, _ = os.path.splitext(job_details["file"]["name"])
+                            snapshot_name = '{}-{}-cam1.jpg'.format(print_name, snapshot_count)
+                            snapshot_count += 1
                             resp.raw.decode_content = True
-                            self._logger.info("Post 2")
-                            self.post_raw_img(filename=basename, raw_img=resp.raw)
+                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw)
+                        except requests.exceptions.RequestException as ex:
+                            self._logger.error(ex)
+
+                    if camera_2_count >= int(self._settings.get(["camera_2_interval"])):
+                        self._logger.info("CAMERA 2 SNAPSHOT")
+                        camera_2_count = 0
+                        try:
+                            resp = requests.get(
+                                self._settings.get(["snapshot_url_2"]),
+                                stream=True
+                            )
+                            job_details = self.get_current_job()
+                            print_name, _ = os.path.splitext(job_details["file"]["name"])
+                            snapshot_name = '{}-{}-cam2.jpg'.format(print_name, snapshot_count)
+                            snapshot_count += 1
+                            resp.raw.decode_content = True
+                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw)
+                        except requests.exceptions.RequestException as ex:
+                            self._logger.error(ex)
 
             time.sleep(1)
+            camera_1_count += 1
+            camera_2_count += 1
 
 __plugin_name__ = "Mattacloud"
 
