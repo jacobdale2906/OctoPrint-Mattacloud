@@ -11,16 +11,17 @@ import json
 import os
 import threading
 import time
+import logging
+import re
 
 import flask
 import requests
-from watchdog.observers import Observer
+import sentry_sdk
 
 import octoprint.plugin
 from octoprint.filemanager import FileDestinations
 from octoprint.filemanager.util import StreamWrapper, DiskFileWrapper
 
-from .watcher import ImageHandler
 from .ws import Socket
 from .camera import capture_snapshot
 
@@ -40,6 +41,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             upload_dir="/home/pi/.octoprint/uploads/",
             snapshot_count=0,
             enabled=True,
+            save_imgs_locally=False,
             config_print=False,
             ws_connected=False,
             num_cameras=2,
@@ -149,27 +151,19 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def on_after_startup(self):
         self._logger.info("Starting OctoPrint-Mattacloud Plugin...")
-        # self.img_lst = []
-        # self.len_img_lst = 0
         self.new_print_job = False
         self.ws = None
-        # dir_path = self.get_octolapse_dir()
         main_thread = threading.Thread(target=self.loop)
         main_thread.daemon = True
         main_thread.start()
-        # watchdog_thread = threading.Thread(
-        #     target=self.run_observer, args=(dir_path,))
-        # watchdog_thread.daemon = True
-        # watchdog_thread.start()
         self.ws_connect()
 
     def on_event(self, event, payload):
         self._logger.info("Event %s %s", event, payload)
-        if self.is_enabled() and hasattr(self, "ws"):
-            if self.ws:
-                msg = self.event_ws_data(event, payload)
-                self.ws.send_msg(msg)
-                self._logger.info("Sent MSG")
+        if self.ws_connected():
+            msg = self.event_ws_data(event, payload)
+            self.ws.send_msg(msg)
+            self._logger.info("Sent MSG")
 
     def event_ws_data(self, event, payload):
         data = self.ws_data()
@@ -258,25 +252,34 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ws_thread.daemon = True
         ws_thread.start()
         self._logger.info("Started websocket")
-        ws_send_data = threading.Thread(target=self.ws_send_data)
-        ws_send_data.daemon = True
-        ws_send_data.start()
+        # ws_send_data = threading.Thread(target=self.ws_send_data_daemon)
+        # ws_send_data.daemon = True
+        # ws_send_data.start()
 
-    def ws_send_data(self):
+    def ws_send_data_daemon(self):
+        self.ws_send_data(msg=None, interval=1)
+
+    def ws_send_data(self, msg=None, interval=5):
         while True:
-            if self.is_enabled():
-                if self.ws:
-                    self._logger.info("Websocketing")
+            self._logger.info
+            if self.ws_connected():
+                if not msg:
                     msg = self.ws_data()
-                    self.ws.send_msg(msg)
-            time.sleep(1)
+                    self._logger.info(msg)
+                self.ws.send_msg(msg)
+            time.sleep(interval)
 
-    def is_ws_connected(self):
-        connected = False
-        if self.ws:
+    def ws_available(self):
+        if self.is_enabled() and hasattr(self, "ws"):
+            if self.ws:
+                return True
+        return False
+
+    def ws_connected(self):
+        if self.ws_available():
             if self.ws.connected():
-                connected = True
-        return connected
+                return True
+        return False
 
     def ws_on_open(self, ws):
         self._logger.info("Opening websocket...")
@@ -291,6 +294,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self._settings.save(force=True)
 
     def ws_on_message(self, ws, msg):
+        self._logger.info(msg)
         json_msg = json.loads(msg)
         if "cmd" in json_msg:
             self.handle_cmds(json_msg)
@@ -310,6 +314,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         return data
 
     def handle_cmds(self, json_msg):
+        self._logger.info(json_msg)
         if "cmd" in json_msg:
             if json_msg["cmd"].lower() == "pause":
                 self._printer.pause_print()
@@ -347,6 +352,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             if json_msg["cmd"].lower() == "extrude":
                 if "amt" in json_msg:
                     amt = json_msg["amt"]
+                    self._logger.info(json_msg)
+                    self._logger.info(amt)
+                    self._logger.info(type(amt))
                     self._printer.extrude(amount=amt)
             if json_msg["cmd"].lower() == "retract":
                 if "amt" in json_msg:
@@ -369,7 +377,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     # TODO: Add checking to see if valid factor
                     # Percentage expressed as either an int between 0 and 100
                     # or a float between 0 and 1.
-                    self._printer.flow_rate(factor=new_factor)
+                    flow_cmd = "M221 S{}".format(new_factor)
+                    self._printer.commands(commands=flow_cmd)
+                    self._printer.commands(commands="M221")
             if json_msg["cmd"].lower() == "gcode":
                 if "commands" in json_msg:
                     gcode_cmds = json_msg["commands"]
@@ -393,10 +403,13 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     # offsets to the hotend target temperatures.
                     offsets = json_msg["offsets"]
                     self._printer.set_temperature_offset(offset=offsets)
+            if json_msg["cmd"].lower() == "z_adjust":
+                if "height" in json_msg:
+                    height = json_msg["height"]
+                    z_adjust_cmd = "M206 Z{}".format(height)
+                    self._printer.commands(commands=z_adjust_cmd)
             if json_msg["cmd"].lower() == "upload_request":
                 # TODO: Add loc to server side
-                self._logger.info("upload_request")
-                self._logger.info(json_msg)
                 if "id" in json_msg and "loc" in json_msg:
                     if json_msg["loc"].lower() == "sd":
                         location = FileDestinations.SDCARD
@@ -407,11 +420,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                         location = FileDestinations.LOCAL
                         self._logger.error("Invalid file destination")
                     path = self.post_upload_request(file_id=json_msg["id"])
-                    self._logger.info(path)
-                    self._logger.info(self._file_manager._printer_profile_manager.get_default())
-                    self._logger.info(self._file_manager._printer_profile_manager)
-                    # result = self._file_manager.analyse(destination=location, path=path)
-                    # self._logger.info(result)
                     # TODO: Handle analysis for SD card files
                     is_analysed = self._file_manager.has_analysis(destination=location,
                                                                   path=path)
@@ -504,12 +512,11 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         data = {
             "timestamp": self.make_timestamp(),
-            "config": 1 if self.is_config_print() else 0,
+            "config": 1 if self.is_config_print() else 0,  # legacy
         }
 
         if not gcode:
             job_info = self.get_current_job()
-            self._logger.info(job_info)
             gcode_name = job_info.get("file", {}).get("name")
             gcode_path = job_info.get("file", {}).get("path")
             upload_dir = self._settings.get(["upload_dir"])
@@ -532,11 +539,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                             )
                             resp.raise_for_status()
                         except requests.exceptions.RequestException as e:
-                            self._logger.error("Generic Request Exception")
                             self._logger.error("Exception: %s", e)
 
                 except (OSError, IOError) as e:
-                    self._logger.error("Failed to open gcode file: %s", path)
                     self._logger.error("Exception: %s", e)
             else:
                 self._logger.error("Gcode file does not exist: %s", path)
@@ -560,6 +565,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             "timestamp": self.make_timestamp(),
             "update": update,
         }
+
         try:
             resp = requests.post(
                 url=url,
@@ -568,21 +574,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 headers=self.make_auth_header()
             )
             resp.raise_for_status()
-        except requests.exceptions.Timeout as e:
-            self._logger.error("Timeout for url: %s", url)
-            self._logger.error("Exception: %s", e)
-        except requests.exceptions.TooManyRedirects as e:
-            self._logger.error("Too Many Redirects")
-            self._logger.error("Exception: %s", e)
-        except requests.exceptions.HTTPError as e:
-            self._logger.error("HTTP Error")
-            self._logger.error("Exception: %s", e)
+
         except requests.exceptions.RequestException as e:
-            self._logger.error("Generic Request Exception")
             self._logger.error("Exception: %s", e)
 
     def post_raw_img(self, filename, raw_img, update=0):
-        self._logger.info("Posting second image")
+        self._logger.info("Posting raw image")
         if not self.is_setup_complete():
             self._logger.warning("Printer not ready")
             return
@@ -606,17 +603,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 headers=self.make_auth_header()
             )
             resp.raise_for_status()
-        except requests.exceptions.Timeout as e:
-            self._logger.error("Timeout for url: %s", url)
-            self._logger.error("Exception: %s", e)
-        except requests.exceptions.TooManyRedirects as e:
-            self._logger.error("Too Many Redirects")
-            self._logger.error("Exception: %s", e)
-        except requests.exceptions.HTTPError as e:
-            self._logger.error("HTTP Error")
-            self._logger.error("Exception: %s", e)
+
         except requests.exceptions.RequestException as e:
-            self._logger.error("Generic Request Exception")
             self._logger.error("Exception: %s", e)
 
     def post_data(self, data=None):
@@ -641,17 +629,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             resp.raise_for_status()
             self.process_response(resp)
 
-        except requests.exceptions.Timeout as e:
-            self._logger.error("Timeout for url: %s", url)
-            self._logger.error("Exception: %s", e)
-        except requests.exceptions.TooManyRedirects as e:
-            self._logger.error("Too Many Redirects")
-            self._logger.error("Exception: %s", e)
-        except requests.exceptions.HTTPError as e:
-            self._logger.error("HTTP Error")
-            self._logger.error("Exception: %s", e)
         except requests.exceptions.RequestException as e:
-            self._logger.error("Generic Request Exception")
             self._logger.error("Exception: %s", e)
 
     def post_upload_request(self, file_id):
@@ -718,7 +696,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def on_api_command(self, command, data):
         if command == "test_auth_token":
-            self._logger.info("PING")
             auth_token = data["auth_token"]
             success, status_text = self.test_auth_token(token=auth_token)
             if success:
@@ -727,11 +704,11 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 self._settings.save(force=True)
             return flask.jsonify({"success": success, "text": status_text})
         if command == "ws_reconnect":
-            if not self.is_ws_connected():
+            if not self.ws_connected():
                 self.ws_connect()
                 # TODO: Improve this... hacky wait for the websocket to connect
                 time.sleep(2)
-                if self.is_ws_connected():
+                if self.ws_connected():
                     status_text = "Successfully connected to mattacloud."
                     success = True
                 else:
@@ -790,21 +767,29 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 self._logger.info("New job")
                 self.post_gcode()
                 self.new_print_job = False
+                self._printer.commands(commands="M221")  # check flow rate
         elif self.is_operational():
             self.new_print_job = True
             self.set_snapshot_count(0)
-            # if self.img_lst != []:
-            #     del self.img_lst[:]
-            #     self.len_img_lst = 0
-            #     self.set_snapshot_count(0)
+
+    def parse_received_lines(self, comm, line, *args, **kwargs):
+        if "Flow" in line:
+            flow_regex = re.compile("Flow: (\d+)\%")
+            match = flow_regex.search(line)
+            self._logger.info(match.group(1))
+            self._logger.info("Flow!!")
+            extra_data = {
+                'flow_rate': int(match.group(1)),
+            }
+            msg = self.ws_data(extra_data=extra_data)
+            self.ws.send_msg(msg)
+
+        return line
 
     def loop(self):
         camera_1_count = 0
         camera_2_count = 0
         while True:
-            self._logger.info("Loop")
-            self._logger.info(camera_1_count)
-            self._logger.info(camera_2_count)
             if self.is_enabled():
                 if not self.is_setup_complete():
                     self._logger.warning("Invalid URL, Authorization Token or Spookiness")
@@ -813,49 +798,51 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
                 self.is_new_job()
 
+                if self.ws_connected():
+                    msg = self.ws_data()
+                    self.ws.send_msg(msg)
+
                 if self.has_job():
                     self._logger.info("Has Job")
                     snapshot_count = int(self._settings.get(["snapshot_count"]))
-                    if camera_1_count >= int(self._settings.get(["camera_1_interval"])):
-                        self._logger.info("CAMERA 1 SNAPSHOT")
-                        camera_1_count = 0
-                        try:
-                            resp = requests.get(
-                                self._settings.get(["snapshot_url_1"]),
-                                stream=True
-                            )
-                            self._logger.info(resp)
-                            job_details = self.get_current_job()
-                            print_name, _ = os.path.splitext(job_details["file"]["name"])
-                            snapshot_name = '{}-{}-cam1.jpg'.format(print_name, snapshot_count)
-                            self.set_snapshot_count(snapshot_count + 1)
-                            resp.raw.decode_content = True
-                            self._logger.info("Decoded")
-                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=1)
-                            self._logger.info("Posted")
-                        except requests.exceptions.RequestException as ex:
-                            self._logger.info("Error")
-                            self._logger.error(ex)
+                    # if camera_1_count >= int(self._settings.get(["camera_1_interval"])):
+                    #     camera_1_count = 0
+                    #     try:
+                    #         resp = requests.get(
+                    #             self._settings.get(["snapshot_url_1"]),
+                    #             stream=True
+                    #         )
+                    #         self._logger.info(resp)
+                    #         job_details = self.get_current_job()
+                    #         print_name, _ = os.path.splitext(job_details["file"]["name"])
+                    #         snapshot_name = '{}-{}-cam1.jpg'.format(print_name, snapshot_count)
+                    #         self.set_snapshot_count(snapshot_count + 1)
+                    #         resp.raw.decode_content = True
+                    #         self._logger.info("Decoded")
+                    #         self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=1)
+                    #         self._logger.info("Posted")
+                    #     except requests.exceptions.RequestException as ex:
+                    #         self._logger.info("Error")
+                    #         self._logger.error(ex)
 
-                    if camera_2_count >= int(self._settings.get(["camera_2_interval"])):
-                        self._logger.info("CAMERA 2 SNAPSHOT")
-                        camera_2_count = 0
-                        try:
-                            resp = requests.get(
-                                self._settings.get(["snapshot_url_2"]),
-                                stream=True
-                            )
-                            job_details = self.get_current_job()
-                            print_name, _ = os.path.splitext(job_details["file"]["name"])
-                            snapshot_name = '{}-{}-cam2.jpg'.format(print_name, snapshot_count)
-                            self.set_snapshot_count(snapshot_count + 1)
-                            resp.raw.decode_content = True
-                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=0)
-                        except requests.exceptions.RequestException as ex:
-                            self._logger.error(ex)
+                    # if camera_2_count >= int(self._settings.get(["camera_2_interval"])):
+                    #     camera_2_count = 0
+                    #     try:
+                    #         resp = requests.get(
+                    #             self._settings.get(["snapshot_url_2"]),
+                    #             stream=True
+                    #         )
+                    #         job_details = self.get_current_job()
+                    #         print_name, _ = os.path.splitext(job_details["file"]["name"])
+                    #         snapshot_name = '{}-{}-cam2.jpg'.format(print_name, snapshot_count)
+                    #         self.set_snapshot_count(snapshot_count + 1)
+                    #         resp.raw.decode_content = True
+                    #         self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=0)
+                    #     except requests.exceptions.RequestException as ex:
+                    #         self._logger.error(ex)
 
-                    camera_1_count += 1
-                    camera_2_count += 1
+                    # camera_1_count += 1
+                    # camera_2_count += 1
 
             time.sleep(1)
 
@@ -868,5 +855,6 @@ def __plugin_load__():
     __plugin_implementation__ = MattacloudPlugin()
     global __plugin_hooks__
     __plugin_hooks__ = {
-        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
+        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
+        "octoprint.comm.protocol.gcode.received": __plugin_implementation__.parse_received_lines,
     }
