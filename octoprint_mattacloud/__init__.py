@@ -805,25 +805,25 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 if self.has_job():
                     self._logger.info("Has Job")
                     snapshot_count = int(self._settings.get(["snapshot_count"]))
-                    # if camera_1_count >= int(self._settings.get(["camera_1_interval"])):
-                    #     camera_1_count = 0
-                    #     try:
-                    #         resp = requests.get(
-                    #             self._settings.get(["snapshot_url_1"]),
-                    #             stream=True
-                    #         )
-                    #         self._logger.info(resp)
-                    #         job_details = self.get_current_job()
-                    #         print_name, _ = os.path.splitext(job_details["file"]["name"])
-                    #         snapshot_name = '{}-{}-cam1.jpg'.format(print_name, snapshot_count)
-                    #         self.set_snapshot_count(snapshot_count + 1)
-                    #         resp.raw.decode_content = True
-                    #         self._logger.info("Decoded")
-                    #         self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=1)
-                    #         self._logger.info("Posted")
-                    #     except requests.exceptions.RequestException as ex:
-                    #         self._logger.info("Error")
-                    #         self._logger.error(ex)
+                    if camera_1_count >= int(self._settings.get(["camera_1_interval"])):
+                        camera_1_count = 0
+                        try:
+                            resp = requests.get(
+                                self._settings.get(["snapshot_url_1"]),
+                                stream=True
+                            )
+                            self._logger.info(resp)
+                            job_details = self.get_current_job()
+                            print_name, _ = os.path.splitext(job_details["file"]["name"])
+                            snapshot_name = '{}-{}-cam1.jpg'.format(print_name, snapshot_count)
+                            self.set_snapshot_count(snapshot_count + 1)
+                            resp.raw.decode_content = True
+                            self._logger.info("Decoded")
+                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=1)
+                            self._logger.info("Posted")
+                        except requests.exceptions.RequestException as ex:
+                            self._logger.info("Error")
+                            self._logger.error(ex)
 
                     # if camera_2_count >= int(self._settings.get(["camera_2_interval"])):
                     #     camera_2_count = 0
@@ -841,7 +841,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     #     except requests.exceptions.RequestException as ex:
                     #         self._logger.error(ex)
 
-                    # camera_1_count += 1
+                    camera_1_count += 1
                     # camera_2_count += 1
 
             time.sleep(1)
