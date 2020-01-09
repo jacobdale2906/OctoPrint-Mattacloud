@@ -54,5 +54,3 @@ class Socket():
         self.socket.keep_running = False
         self.socket.close()
         _logger.debug("The websocket has been closed.")
-    
-
