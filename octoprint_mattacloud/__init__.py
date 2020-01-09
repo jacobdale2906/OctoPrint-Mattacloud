@@ -23,7 +23,7 @@ from octoprint.filemanager import FileDestinations
 from octoprint.filemanager.util import StreamWrapper, DiskFileWrapper
 
 from .ws import Socket
-from .camera import capture_snapshot
+from .printer import Printer
 
 
 class MattacloudPlugin(octoprint.plugin.StartupPlugin,
@@ -33,20 +33,24 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                        octoprint.plugin.SimpleApiPlugin,
                        octoprint.plugin.EventHandlerPlugin):
 
+    def __init__(self):
+        self.printer = Printer()
+        self.snapshot_count = 0
+        self.new_print_job = False
+        self.ws_auto_reconnect_count = 0
+        self.ws_auto_reconnect = 30
+
     def get_settings_defaults(self):
         return dict(
+            enabled=True,
             base_url="https://mattalabs.com/",
             authorization_token="e.g. w1il4li2am2ca1xt4on91",
-            snapshot_dir="/home/pi/.octoprint/data/octolapse/snapshots/",
             upload_dir="/home/pi/.octoprint/uploads/",
-            snapshot_count=0,
-            enabled=True,
-            save_imgs_locally=False,
             config_print=False,
             ws_connected=False,
-            num_cameras=2,
-            camera_1_interval=10,
-            camera_2_interval=10,
+            num_cameras=1,
+            camera_interval_1=3,
+            camera_interval_2=10,
             snapshot_url_1='http://localhost:8080/?action=snapshot',
             snapshot_url_2='http://localhost:8081/?action=snapshot',
             vibration_interval=10,
@@ -158,13 +162,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         main_thread.start()
         self.ws_connect()
 
-    def on_event(self, event, payload):
-        self._logger.info("Event %s %s", event, payload)
-        if self.ws_connected():
-            msg = self.event_ws_data(event, payload)
-            self.ws.send_msg(msg)
-            self._logger.info("Sent MSG")
-
     def event_ws_data(self, event, payload):
         data = self.ws_data()
         data["event"] = {
@@ -173,17 +170,10 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         }
         return data
 
-    def event_post_data(self, event, payload):
-        data = {
-            "event": {
-                "event_type": event,
-                "payload": payload
-            },
-            "printer_data": self.get_printer_data(),
-            "temperature_data": self.get_printer_temps(),
-            "timestamp": self.make_timestamp(),
-        }
-        return data
+    def on_event(self, event, payload):
+        if self.ws_connected():
+            msg = self.event_ws_data(event, payload)
+            self.ws.send_msg(msg)
 
     def is_enabled(self):
         return self._settings.get(["enabled"])
@@ -204,43 +194,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             return True
         return False
 
-    def get_snapshot_dir(self):
-        if not self._settings.get(["snapshot_dir"]):
-            return None
-        return self._settings.get(["snapshot_dir"])
-
-    def get_octolapse_dir(self, dir_path=None):
-        if not dir_path:
-            dir_path = self.get_snapshot_dir()
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-        return dir_path
-
-    def get_latest_img(self):
-        return self.img_lst[-1]
-
-    def get_latest_img_path(self, img_path):
-        self.current_img_path = img_path
-
-    def set_snapshot_count(self, count):
-        self._settings.set(["snapshot_count"], count, force=True)
-        self._settings.save(force=True)
-
-    def run_observer(self, dir_path):
-        event_handler = ImageHandler(self.img_lst)
-        observer = Observer()
-        observer.schedule(event_handler, path=dir_path, recursive=True)
-        observer.start()
-
-        try:
-            while True:
-                time.sleep(1)
-        except (KeyboardInterrupt, SystemExit) as ex:
-            self._logger.warning("Exception Handling")
-            observer.stop()
-
-        observer.join()
-
     def ws_connect(self):
         self._logger.info("Connecting websocket")
         self.ws = Socket(on_open=lambda ws: self.ws_on_open(ws),
@@ -251,13 +204,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ws_thread = threading.Thread(target=self.ws.run)
         ws_thread.daemon = True
         ws_thread.start()
-        self._logger.info("Started websocket")
-        # ws_send_data = threading.Thread(target=self.ws_send_data_daemon)
-        # ws_send_data.daemon = True
-        # ws_send_data.start()
-
-    def ws_send_data_daemon(self):
-        self.ws_send_data(msg=None, interval=1)
 
     def ws_send_data(self, msg=None, interval=5):
         while True:
@@ -279,6 +225,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         if self.ws_available():
             if self.ws.connected():
                 return True
+        if self.ws_auto_reconnect_count >= self.ws_auto_reconnect:
+            self._logger.info("Trying reconnect")
+            self.ws_connect()
+            self.ws_auto_reconnect_count = 0
+        self.ws_auto_reconnect_count += 1
+        self._logger.info(self.ws_auto_reconnect_count)
         return False
 
     def ws_on_open(self, ws):
@@ -473,7 +425,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         try:
             future_path, future_filename = self._file_manager.sanitize(FileDestinations.LOCAL, filename)
-        except:
+        except Exception as e:
             future_path = None
             future_filename = None
         future_full_path = self._file_manager.join_path(FileDestinations.LOCAL, future_path, future_filename)
@@ -607,31 +559,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         except requests.exceptions.RequestException as e:
             self._logger.error("Exception: %s", e)
 
-    def post_data(self, data=None):
-        self._logger.info("Posting data")
-        if not self.is_setup_complete():
-            self._logger.warning("Printer not ready")
-            return
-
-        if not data:
-            data = {
-                "timestamp": self.make_timestamp(),
-                "data": self.get_printer_data(),
-            }
-
-        url = self.get_data_url()
-        try:
-            resp = requests.post(
-                url=url,
-                data=data,
-                headers=self.make_auth_header()
-            )
-            resp.raise_for_status()
-            self.process_response(resp)
-
-        except requests.exceptions.RequestException as e:
-            self._logger.error("Exception: %s", e)
-
     def post_upload_request(self, file_id):
         self._logger.info("Posting upload request")
         if not self.is_setup_complete():
@@ -704,19 +631,16 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 self._settings.save(force=True)
             return flask.jsonify({"success": success, "text": status_text})
         if command == "ws_reconnect":
-            if not self.ws_connected():
-                self.ws_connect()
-                # TODO: Improve this... hacky wait for the websocket to connect
-                time.sleep(2)
-                if self.ws_connected():
-                    status_text = "Successfully connected to mattacloud."
-                    success = True
-                else:
-                    status_text = "Failed to connect to mattacloud."
-                    success = False
-            else:
-                status_text = "Already connected to mattacloud."
+            self.ws_connect()
+            # TODO: Improve this... hacky wait for the websocket to connect
+            time.sleep(2)
+            if self.ws_connected():
+                status_text = "Successfully connected to mattacloud."
                 success = True
+            else:
+                status_text = "Failed to connect to mattacloud."
+                success = False
+
             self._logger.info(self._settings.get(["ws_connected"]))
             return flask.jsonify({"success": success, "text": status_text})
 
@@ -755,7 +679,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             else:
                 status_text = "Oh no! An unknown error occurred."
         except requests.exceptions.RequestException as e:
-            self._logger.error("Generic Request Exception")
             self._logger.error("Exception: %s", e)
             status_text = "Error. Please check OctoPrint\'s internet connection"
             # TODO: Catch the correct exceptions
@@ -764,13 +687,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
     def is_new_job(self):
         if self.has_job():
             if self.new_print_job:
-                self._logger.info("New job")
                 self.post_gcode()
                 self.new_print_job = False
                 self._printer.commands(commands="M221")  # check flow rate
         elif self.is_operational():
             self.new_print_job = True
-            self.set_snapshot_count(0)
+            self.snapshot_count = 0
 
     def parse_received_lines(self, comm, line, *args, **kwargs):
         if "Flow" in line:
@@ -786,9 +708,28 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         return line
 
+    def camera_snapshot(self, snapshot_url, cam_count=1):
+        try:
+            resp = requests.get(
+                self._settings.get(["snapshot_url_1"]),
+                stream=True
+            )
+            resp.raw.decode_content = True
+            job_details = self.get_current_job()
+            print_name, _ = os.path.splitext(job_details["file"]["name"])
+            snapshot_name = '{}-{}-cam{}.jpg'.format(print_name,
+                                                     self.snapshot_count,
+                                                     cam_count)
+            self.snapshot_count += 1
+            return snapshot_name, resp.raw
+        except requests.exceptions.RequestException as e:
+            self._logger.error(ex)
+            return None, None
+
     def loop(self):
         camera_1_count = 0
         camera_2_count = 0
+        num_cameras = self._settings.get(["num_cameras"])
         while True:
             if self.is_enabled():
                 if not self.is_setup_complete():
@@ -802,47 +743,25 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     msg = self.ws_data()
                     self.ws.send_msg(msg)
 
-                if self.has_job():
-                    self._logger.info("Has Job")
-                    snapshot_count = int(self._settings.get(["snapshot_count"]))
-                    if camera_1_count >= int(self._settings.get(["camera_1_interval"])):
-                        camera_1_count = 0
-                        try:
-                            resp = requests.get(
-                                self._settings.get(["snapshot_url_1"]),
-                                stream=True
-                            )
-                            self._logger.info(resp)
-                            job_details = self.get_current_job()
-                            print_name, _ = os.path.splitext(job_details["file"]["name"])
-                            snapshot_name = '{}-{}-cam1.jpg'.format(print_name, snapshot_count)
-                            self.set_snapshot_count(snapshot_count + 1)
-                            resp.raw.decode_content = True
-                            self._logger.info("Decoded")
-                            self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=1)
-                            self._logger.info("Posted")
-                        except requests.exceptions.RequestException as ex:
-                            self._logger.info("Error")
-                            self._logger.error(ex)
+                if self.has_job() and num_cameras > 0:
+                    camera_interval_1 = int(self._settings.get(["camera_interval_1"]))
+                    if camera_count_1 >= camera_interval_1:
+                        snapshot_url = self._settings.get(["snapshot_url_1"])
+                        filename, img = self.camera_snapshot(snapshot_url)
+                        if filename and img:
+                            self.post_raw_img(filname, img, update=1)
+                        camera_count_1 = 0
+                    camera_count_1 += 1
 
-                    # if camera_2_count >= int(self._settings.get(["camera_2_interval"])):
-                    #     camera_2_count = 0
-                    #     try:
-                    #         resp = requests.get(
-                    #             self._settings.get(["snapshot_url_2"]),
-                    #             stream=True
-                    #         )
-                    #         job_details = self.get_current_job()
-                    #         print_name, _ = os.path.splitext(job_details["file"]["name"])
-                    #         snapshot_name = '{}-{}-cam2.jpg'.format(print_name, snapshot_count)
-                    #         self.set_snapshot_count(snapshot_count + 1)
-                    #         resp.raw.decode_content = True
-                    #         self.post_raw_img(filename=snapshot_name, raw_img=resp.raw, update=0)
-                    #     except requests.exceptions.RequestException as ex:
-                    #         self._logger.error(ex)
-
-                    camera_1_count += 1
-                    # camera_2_count += 1
+                    if num_cameras > 1:
+                        camera_interval_2 = int(self._settings.get(["camera_interval_2"]))
+                        if camera_count_2 >= camera_interval_2:
+                            snapshot_url = self._settings.get(["snapshot_url_2"])
+                            filename, img = self.camera_snapshot(snapshot_url)
+                            if filename and img:
+                                self.post_raw_img(filname, img, update=1)
+                            camera_count_2 = 0
+                        camera_count_2 += 1
 
             time.sleep(1)
 
