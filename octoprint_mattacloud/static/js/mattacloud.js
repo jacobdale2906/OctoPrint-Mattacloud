@@ -190,8 +190,8 @@ $(function () {
             self.ws_connected(self.settings.settings.plugins.mattacloud.ws_connected());
             self.temperature_interval(self.settings.settings.plugins.mattacloud.temperature_interval());
             self.vibration_interval(self.settings.settings.plugins.mattacloud.vibration_interval());
-            self.camera_1_interval(self.settings.settings.plugins.mattacloud.camera_1_interval());
-            self.camera_2_interval(self.settings.settings.plugins.mattacloud.camera_2_interval());
+            self.camera_1_interval(self.settings.settings.plugins.mattacloud.camera_interval_1());
+            self.camera_2_interval(self.settings.settings.plugins.mattacloud.camera_interval_2());
             self.snapshot_url_1(self.settings.settings.plugins.mattacloud.snapshot_url_1());
             self.snapshot_url_2(self.settings.settings.plugins.mattacloud.snapshot_url_2());
             update_status_text();
