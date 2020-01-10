@@ -711,7 +711,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
     def camera_snapshot(self, snapshot_url, cam_count=1):
         try:
             resp = requests.get(
-                self._settings.get(["snapshot_url_1"]),
+                snapshot_url,
                 stream=True
             )
             resp.raw.decode_content = True
@@ -727,8 +727,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             return None, None
 
     def loop(self):
-        camera_1_count = 0
-        camera_2_count = 0
+        camera_count_1 = 0
+        camera_count_2 = 0
         num_cameras = self._settings.get(["num_cameras"])
         while True:
             if self.is_enabled():
@@ -742,14 +742,15 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 if self.ws_connected():
                     msg = self.ws_data()
                     self.ws.send_msg(msg)
-
+                self._logger.info(self._settings.get(["snapshot_url_1"]))
+                self._logger.info(self._settings.get(["snapshot_url_2"]))
                 if self.has_job() and num_cameras > 0:
                     camera_interval_1 = int(self._settings.get(["camera_interval_1"]))
                     if camera_count_1 >= camera_interval_1:
                         snapshot_url = self._settings.get(["snapshot_url_1"])
                         filename, img = self.camera_snapshot(snapshot_url)
                         if filename and img:
-                            self.post_raw_img(filname, img, update=1)
+                            self.post_raw_img(filename, img, update=1)
                         camera_count_1 = 0
                     camera_count_1 += 1
 
@@ -757,9 +758,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                         camera_interval_2 = int(self._settings.get(["camera_interval_2"]))
                         if camera_count_2 >= camera_interval_2:
                             snapshot_url = self._settings.get(["snapshot_url_2"])
-                            filename, img = self.camera_snapshot(snapshot_url)
+                            filename, img = self.camera_snapshot(snapshot_url, cam_count=2)
                             if filename and img:
-                                self.post_raw_img(filname, img, update=1)
+                                self.post_raw_img(filename, img)
                             camera_count_2 = 0
                         camera_count_2 += 1
 

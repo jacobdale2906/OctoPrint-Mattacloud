@@ -54,13 +54,14 @@ $(function () {
         self.config_print = ko.observable();
         self.ws_connected = ko.observable();
 
+        self.num_cameras = ko.observable();
         self.snapshot_url_1 = ko.observable();
         self.snapshot_url_2 = ko.observable();
+        self.camera_interval_1 = ko.observable();
+        self.camera_interval_2 = ko.observable();
 
         self.temperature_interval = ko.observable();
         self.vibration_interval = ko.observable();
-        self.camera_interval_1 = ko.observable();
-        self.camera_interval_2 = ko.observable();
 
         self.is_octoprint_admin = ko.observable(self.loginState.isAdmin());
 
@@ -184,12 +185,13 @@ $(function () {
             self.config_print(self.settings.settings.plugins.mattacloud.config_print());
             self.enabled_value(self.settings.settings.plugins.mattacloud.enabled());
             self.ws_connected(self.settings.settings.plugins.mattacloud.ws_connected());
-            self.temperature_interval(self.settings.settings.plugins.mattacloud.temperature_interval());
-            self.vibration_interval(self.settings.settings.plugins.mattacloud.vibration_interval());
+            self.num_cameras(self.settings.settings.plugins.mattacloud.num_cameras());
             self.camera_interval_1(self.settings.settings.plugins.mattacloud.camera_interval_1());
             self.camera_interval_2(self.settings.settings.plugins.mattacloud.camera_interval_2());
             self.snapshot_url_1(self.settings.settings.plugins.mattacloud.snapshot_url_1());
             self.snapshot_url_2(self.settings.settings.plugins.mattacloud.snapshot_url_2());
+            self.temperature_interval(self.settings.settings.plugins.mattacloud.temperature_interval());
+            self.vibration_interval(self.settings.settings.plugins.mattacloud.vibration_interval());
             update_status_text();
         }
     }
