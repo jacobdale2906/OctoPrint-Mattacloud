@@ -49,10 +49,8 @@ $(function () {
 
         self.auth_token = ko.observable();
         self.server_address = ko.observable();
-        self.snapshot_dir = ko.observable();
         self.upload_dir = ko.observable();
         self.enabled_value = ko.observable();
-        self.snapshot_count_value = ko.observable();
         self.config_print = ko.observable();
         self.ws_connected = ko.observable();
 
@@ -61,8 +59,8 @@ $(function () {
 
         self.temperature_interval = ko.observable();
         self.vibration_interval = ko.observable();
-        self.camera_1_interval = ko.observable();
-        self.camera_2_interval = ko.observable();
+        self.camera_interval_1 = ko.observable();
+        self.camera_interval_2 = ko.observable();
 
         self.is_octoprint_admin = ko.observable(self.loginState.isAdmin());
 
@@ -182,16 +180,14 @@ $(function () {
         self.onBeforeBinding = function () {
             self.auth_token(self.settings.settings.plugins.mattacloud.authorization_token());
             self.server_address(self.settings.settings.plugins.mattacloud.base_url());
-            self.snapshot_dir(self.settings.settings.plugins.mattacloud.snapshot_dir());
-            self.snapshot_count_value(self.settings.settings.plugins.mattacloud.snapshot_count());
             self.upload_dir(self.settings.settings.plugins.mattacloud.upload_dir());
             self.config_print(self.settings.settings.plugins.mattacloud.config_print());
             self.enabled_value(self.settings.settings.plugins.mattacloud.enabled());
             self.ws_connected(self.settings.settings.plugins.mattacloud.ws_connected());
             self.temperature_interval(self.settings.settings.plugins.mattacloud.temperature_interval());
             self.vibration_interval(self.settings.settings.plugins.mattacloud.vibration_interval());
-            self.camera_1_interval(self.settings.settings.plugins.mattacloud.camera_interval_1());
-            self.camera_2_interval(self.settings.settings.plugins.mattacloud.camera_interval_2());
+            self.camera_interval_1(self.settings.settings.plugins.mattacloud.camera_interval_1());
+            self.camera_interval_2(self.settings.settings.plugins.mattacloud.camera_interval_2());
             self.snapshot_url_1(self.settings.settings.plugins.mattacloud.snapshot_url_1());
             self.snapshot_url_2(self.settings.settings.plugins.mattacloud.snapshot_url_2());
             update_status_text();
