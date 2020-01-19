@@ -509,10 +509,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         }
         if not gcode:
             job_info = self.get_current_job()
-            gcode_name = job_info.get("file", {}).get("name")
-            gcode_path = job_info.get("file", {}).get("path")
-            filament = job_info.get("filament", {}).get("tool0", {}).get("length")
-            self._logger.info(filament)
+            gcode_name = job_info["file"]["name"]
+            gcode_path = job_info["file"]["path"]
             upload_dir = self._settings.get(["upload_dir"])
             path = os.path.join(upload_dir, gcode_path)
             if os.path.exists(path):
@@ -534,8 +532,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                             resp.raise_for_status()
                         except requests.exceptions.RequestException as e:
                             self._logger.error(
-                                "Posting gcode: %s, URL: %s, Headers %s",
-                                e, url, headers)
+                                "Posting gcode: %s, URL: %s, Headers: %s",
+                                e, url, self.make_auth_header())
 
                 except (OSError, IOError) as e:
                     self._logger.error(
@@ -576,7 +574,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         except requests.exceptions.RequestException as e:
             self._logger.error(
                 "Posting image: %s, URL: %s, Headers %s",
-                e, url, headers)
+                e, url, self.make_auth_header())
 
     def post_raw_img(self, filename, raw_img, update=0):
         self._logger.debug("Posting raw image")
@@ -608,7 +606,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         except requests.exceptions.RequestException as e:
             self._logger.error(
                 "Posting raw image: %s, URL: %s, Headers %s",
-                e, url, headers)
+                e, url, self.make_auth_header())
 
     def post_upload_request(self, file_id):
         self._logger.debug("Posting upload request")
@@ -655,12 +653,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             except requests.exceptions.RequestException as e:
                 self._logger.error(
                     "Posting upload request (1st post): %s, URL: %s, Headers %s",
-                    e, url, headers)
+                    e, url, self.make_auth_header())
 
         except requests.exceptions.RequestException as e:
             self._logger.error(
                 "Posting upload request  (2st post): %s, URL: %s, Headers %s",
-                e, url, headers)
+                e, url, self.make_auth_header())
 
         return path
 
@@ -734,7 +732,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         except requests.exceptions.RequestException as e:
             self._logger.error(
                 "Testing authorization token: %s, URL: %s, Headers %s",
-                e, url, headers)
+                e, url, self.make_auth_header())
             status_text = "Error. Please check OctoPrint\'s internet connection"
             # TODO: Catch the correct exceptions
         return success, status_text
