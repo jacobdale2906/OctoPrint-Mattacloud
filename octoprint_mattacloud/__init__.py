@@ -511,6 +511,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             job_info = self.get_current_job()
             gcode_name = job_info.get("file", {}).get("name")
             gcode_path = job_info.get("file", {}).get("path")
+            filament = job_info.get("filament", {}).get("tool0", {}).get("length")
+            self._logger.info(filament)
             upload_dir = self._settings.get(["upload_dir"])
             path = os.path.join(upload_dir, gcode_path)
             if os.path.exists(path):
