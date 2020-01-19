@@ -17,7 +17,7 @@
             <div class="control-group">
                 <label class="control-label">{{ _('Authorization Token') }}</label>
                 <div class="controls">
-                    <input id="settings_token_input" type="text" class="input-box d-inline-block" data-bind="value: settings.plugins.mattacloud.authorization_token">
+                    <input id="settings_token_input" type="text" class="mattacloud-input-box d-inline-block" data-bind="value: auth_token">
                     <button id="settings_test_btn" class="btn btn-primary test-btn test-auth-token d-inline-block" type="button"><i id="settings_test_btn_spin" class="fa fa-spinner fa-spin" style="display: none;"></i>Test Token</button>
                     <div class="small-text-div"><small>Sign up to mattacloud to bring intelligence to your 3D printer. <a href="https://mattalabs.com/accounts/signup/">Sign Up</a></small></div>
                 </div>
@@ -25,59 +25,50 @@
             <div class="control-group">
                 <label class="control-label">{{ _('Server Address') }}</label>
                 <div class="controls">
-                    <input id="settings_url_input" type="text" class="input-box" id="base-url" data-bind="value: settings.plugins.mattacloud.base_url">
+                    <input id="settings_url_input" type="text" class="mattacloud-input-box" id="base-url" data-bind="value: server_address">
                 </div>
             </div>
             <div class="control-group">
                 <label class="control-label">{{ _('Upload Directory') }}</label>
                 <div class="controls">
-                    <input type="text" class="input-box" id="upload-dir" data-bind="value: settings.plugins.mattacloud.upload_dir">
+                    <input type="text" class="mattacloud-input-box" id="upload-dir" data-bind="value: upload_dir">
                 </div>
             </div>
             <div class="control-group">
                 <label class="control-label">{{ _('Number of Cameras') }}</label>
                 <div class="controls">
-                    <input type="text" class="input-box" id="num-cameras" data-bind="value: settings.plugins.mattacloud.num_cameras">
+                    <select type="text" class="input-mini" id="num-cameras" data-bind="options: camera_numbers, optionsText: 'name', optionsValue: 'key', value: num_cameras">
+                    </select>
                 </div>
             </div>
-            <div class="control-group">
-                <label class="control-label">{{ _('Camera 1 Snapshot URL') }}</label>
-                <div class="controls">
-                    <input type="text" class="input-box" id="snapshot-url-1" data-bind="value: settings.plugins.mattacloud.snapshot_url_1">
+            <div id="camera-1">
+                <div class="mattacloud-inline-control-group">
+                    <label class="control-label">{{ _('Camera 1 Snapshot URL') }}</label>
+                    <div class="controls">
+                        <input type="text" class="mattacloud-input-box" id="snapshot-url-1" data-bind="value: snapshot_url_1">
+                    </div>
                 </div>
-            </div>
-            <div class="control-group">
-                <label class="control-label">{{ _('Camera 2 Snapshot URL') }}</label>
-                <div class="controls">
-                    <input type="text" class="input-box" id="snapshot-url-2" data-bind="value: settings.plugins.mattacloud.snapshot_url_2">
-                </div>
-            </div>
-            <div class="control-group">
+                <div class="mattacloud-inline-control-group">
                 <label class="control-label">{{ _('Camera 1 Interval') }}</label>
                 <div class="controls input-append">
-                    <input type="text" class="input-mini" id="camera-interval-1" data-bind="value: settings.plugins.mattacloud.camera_interval_1">
+                    <input type="text" class="input-mini" id="camera-interval-1" data-bind="value: camera_interval_1">
                     <span class="add-on">sec</span>
                 </div>
             </div>
-            <div class="control-group">
-                <label class="control-label">{{ _('Camera 2 Interval') }}</label>
-                <div class="controls input-append">
-                    <input type="text" class="input-mini" id="camera-interval-2" data-bind="value: settings.plugins.mattacloud.camera_interval_2">
-                    <span class="add-on">sec</span>
-                </div>
             </div>
-            <div class="control-group">
-                <label class="control-label">{{ _('Vibration Interval') }}</label>
-                <div class="controls input-append">
-                    <input type="text" class="input-mini" id="vibration-interval" data-bind="value: settings.plugins.mattacloud.vibration_interval">
-                    <span class="add-on">sec</span>
+            <div id="camera-2">
+                <div class="mattacloud-inline-control-group">
+                    <label class="control-label">{{ _('Camera 2 Snapshot URL') }}</label>
+                    <div class="controls">
+                        <input type="text" class="mattacloud-input-box" id="snapshot-url-2" data-bind="value: snapshot_url_2">
+                    </div>
                 </div>
-            </div>
-             <div class="control-group">
-                <label class="control-label">{{ _('Temperature Interval') }}</label>
-                <div class="controls input-append">
-                    <input type="text" class="input-mini" id="temperature-interval" data-bind="value: settings.plugins.mattacloud.temperature_interval">
-                    <span class="add-on">sec</span>
+                <div class="mattacloud-inline-control-group">
+                    <label class="control-label">{{ _('Camera 2 Interval') }}</label>
+                    <div class="controls input-append">
+                        <input type="text" class="input-mini" id="camera-interval-2" data-bind="value: camera_interval_2">
+                        <span class="add-on">sec</span>
+                    </div>
                 </div>
             </div>
         </form>

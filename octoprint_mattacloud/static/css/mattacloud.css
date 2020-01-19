@@ -199,3 +199,13 @@ witch-fa-lg input[type="checkbox"]:checked + .fa-slider i {
     margin-bottom: 5px;
     height: 30px;
 }
+
+.mattacloud-input-box {
+    width: 450px !important;
+}
+
+.mattacloud-inline-control-group {
+    margin-bottom: 10px;
+    vertical-align: top;
+    display: inline-block;
+}

@@ -7,12 +7,12 @@ _logger = logging.getLogger("octoprint.plugins.mattacloud")
 
 
 class Socket():
-    def __init__(self, on_open, on_message, on_close, url, token):
+    def __init__(self, on_open, on_message, on_close, on_error, url, token):
         self.socket = websocket.WebSocketApp(url,
                                              on_open=on_open,
                                              on_message=on_message,
                                              on_close=on_close,
-                                             on_error=self.on_error,
+                                             on_error=on_error,
                                              header=[
                                                  "authorization: token {}".format(token)
                                              ]

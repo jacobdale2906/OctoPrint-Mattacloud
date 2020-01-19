@@ -41,6 +41,9 @@ $(function () {
         });
     }
 
+    var camera_1_settings = document.getElementById("camera-1");
+    var camera_2_settings = document.getElementById("camera-2");
+
     function MattacloudViewModel(parameters) {
         var self = this;
 
@@ -60,12 +63,60 @@ $(function () {
         self.camera_interval_1 = ko.observable();
         self.camera_interval_2 = ko.observable();
 
-        self.temperature_interval = ko.observable();
-        self.vibration_interval = ko.observable();
-
         self.is_octoprint_admin = ko.observable(self.loginState.isAdmin());
 
         self.ws_status = ko.observable();
+
+        self.camera_numbers =  ko.observable([
+            {key: "0", name: gettext("0")},
+            {key: "1", name: gettext("1")},
+            {key: "2", name: gettext("2")},
+        ]);
+
+        self.auth_token.subscribe(function(new_token) {
+            self.settings.settings.plugins.mattacloud.authorization_token(new_token);
+        })
+
+        self.server_address.subscribe(function(new_server_url) {
+            self.settings.settings.plugins.mattacloud.base_url(new_server_url);
+        })
+
+        self.upload_dir.subscribe(function(new_dir) {
+            self.settings.settings.plugins.mattacloud.upload_dir(new_dir);
+        })
+
+        self.num_cameras.subscribe(function(num_cams) {
+            self.settings.settings.plugins.mattacloud.num_cameras(num_cams);
+            if (num_cams == 0) {
+                camera_1_settings.style.display = "none";
+                camera_2_settings.style.display = "none";
+            } else if (num_cams == 1) {
+                camera_1_settings.style.display = "block";
+                camera_2_settings.style.display = "none";
+            } else if (num_cams == 2) {
+                camera_1_settings.style.display = "block";
+                camera_2_settings.style.display = "block";
+            } else {
+
+            }
+        });
+
+        self.snapshot_url_1.subscribe(function(new_url) {
+            self.settings.settings.plugins.mattacloud.snapshot_url_1(new_url);
+        })
+
+        self.snapshot_url_2.subscribe(function(new_url) {
+            self.settings.settings.plugins.mattacloud.snapshot_url_2(new_url);
+        })
+
+        self.camera_interval_1.subscribe(function(new_interval) {
+            self.settings.settings.plugins.mattacloud.camera_interval_1(new_interval);
+        })
+
+        self.camera_interval_2.subscribe(function(new_interval) {
+            self.settings.settings.plugins.mattacloud.camera_interval_2(new_interval);
+        })
+
     
         var ws_reconnect_btn = document.getElementById("ws_reconnect_btn");
         ws_reconnect_btn.onclick = function () {
@@ -190,12 +241,9 @@ $(function () {
             self.camera_interval_2(self.settings.settings.plugins.mattacloud.camera_interval_2());
             self.snapshot_url_1(self.settings.settings.plugins.mattacloud.snapshot_url_1());
             self.snapshot_url_2(self.settings.settings.plugins.mattacloud.snapshot_url_2());
-            self.temperature_interval(self.settings.settings.plugins.mattacloud.temperature_interval());
-            self.vibration_interval(self.settings.settings.plugins.mattacloud.vibration_interval());
             update_status_text();
         }
     }
-
     // This is how our plugin registers itself with the application, by adding some configuration
     // information to the global variable OCTOPRINT_VIEWMODELS
     OCTOPRINT_VIEWMODELS.push([
