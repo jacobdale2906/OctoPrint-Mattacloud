@@ -271,8 +271,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def ws_on_error(self, ws, error):
         # TODO: handle websocket errors
-        self._logger.error("Websocket Error: %s, URL: %s, Token: %s",
-                           error, self.get_base_url(), self.get_auth_token())
+        self._logger.warning("Websocket Error: %s, URL: %s, Token: %s",
+                             error, self.get_base_url(), self.get_auth_token())
 
     def ws_on_message(self, ws, msg):
         json_msg = json.loads(msg)
@@ -402,8 +402,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     else:
                         # TODO: Handle this error
                         location = FileDestinations.LOCAL
-                        self._logger.error("Invalid file destination: %s",
-                                           json_msg["loc"].lower())
+                        self._logger.warning("Invalid file destination: %s",
+                                             json_msg["loc"].lower())
                     path = self.post_upload_request(file_id=json_msg["id"])
                     # TODO: Handle analysis for SD card files
                     is_analysed = self._file_manager.has_analysis(destination=location,
@@ -420,8 +420,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     else:
                         # TODO: Handle this error
                         location = FileDestinations.LOCAL
-                        self._logger.error("Invalid file destination: %s",
-                                           json_msg["loc"].lower())
+                        self._logger.warning("Invalid file destination: %s",
+                                             json_msg["loc"].lower())
                     # TODO: Destination both local and SD card.
                     self._file_manager.add_folder(destination=location,
                                                   path=folder_name,
@@ -437,8 +437,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     else:
                         # TODO: Handle this error
                         location = FileDestinations.LOCAL
-                        self._logger.error("Invalid file destination: %s",
-                                           json_msg["loc"].lower())
+                        self._logger.warning("Invalid file destination: %s",
+                                             json_msg["loc"].lower())
                     if json_msg["type"].lower() == "file":
                         self._file_manager.remove_file(destination=location,
                                                        path=file_to_delete)
@@ -446,7 +446,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                         self._file_manager.remove_folder(destination=location,
                                                          path=file_to_delete)
                     else:
-                        self._logger.error(
+                        self._logger.warning(
                             "Incorrect type file/folder provided: %s",
                             json_msg["type"].lower())
 
@@ -531,15 +531,15 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                             )
                             resp.raise_for_status()
                         except requests.exceptions.RequestException as e:
-                            self._logger.error(
+                            self._logger.warning(
                                 "Posting gcode: %s, URL: %s, Headers: %s",
                                 e, url, self.make_auth_header())
 
                 except (OSError, IOError) as e:
-                    self._logger.error(
+                    self._logger.warning(
                         "Failed to open gcode file: %s, Path: %s", e, path)
             else:
-                self._logger.error("Gcode file path does not exist: %s", path)
+                self._logger.warning("Gcode file path does not exist: %s", path)
 
     def post_img(self, img=None, update=1):
         self._logger.debug("Posting image")
@@ -572,7 +572,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             resp.raise_for_status()
 
         except requests.exceptions.RequestException as e:
-            self._logger.error(
+            self._logger.warning(
                 "Posting image: %s, URL: %s, Headers %s",
                 e, url, self.make_auth_header())
 
@@ -604,7 +604,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             resp.raise_for_status()
 
         except requests.exceptions.RequestException as e:
-            self._logger.error(
+            self._logger.warning(
                 "Posting raw image: %s, URL: %s, Headers %s",
                 e, url, self.make_auth_header())
 
@@ -651,12 +651,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 resp.raise_for_status()
 
             except requests.exceptions.RequestException as e:
-                self._logger.error(
+                self._logger.warning(
                     "Posting upload request (1st post): %s, URL: %s, Headers %s",
                     e, url, self.make_auth_header())
 
         except requests.exceptions.RequestException as e:
-            self._logger.error(
+            self._logger.warning(
                 "Posting upload request  (2st post): %s, URL: %s, Headers %s",
                 e, url, self.make_auth_header())
 
@@ -730,7 +730,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             else:
                 status_text = "Oh no! An unknown error occurred."
         except requests.exceptions.RequestException as e:
-            self._logger.error(
+            self._logger.warning(
                 "Testing authorization token: %s, URL: %s, Headers %s",
                 e, url, self.make_auth_header())
             status_text = "Error. Please check OctoPrint\'s internet connection"
@@ -774,7 +774,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             self.snapshot_count += 1
             return snapshot_name, resp.raw
         except requests.exceptions.RequestException as e:
-            self._logger.error(
+            self._logger.warning(
                 "Camera snapshot: %s, URL: %s",
                 e, snapshot_url)
             return None, None
