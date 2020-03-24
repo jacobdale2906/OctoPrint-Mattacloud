@@ -2,6 +2,8 @@
 .DS_Store
 .vscode/
 
+update_plugin.sh
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

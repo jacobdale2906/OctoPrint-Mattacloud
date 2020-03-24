@@ -278,6 +278,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         json_msg = json.loads(msg)
         if "cmd" in json_msg:
             self.handle_cmds(json_msg)
+            if self.ws_connected():
+                msg = self.ws_data()
+                self.ws.send_msg(msg)
         if "state" in json_msg:
             if json_msg["state"].lower() == "active":
                 self.active_online = True
