@@ -217,7 +217,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
     def ws_send_data(self):
         self.ws_data_count = 0
         while True:
-            if (self.ws_connected() and (self.ws_data_count * self.ws_loop_time) > self.ws_send_interval()):
+            if (self.ws_connected_retry() and (self.ws_data_count * self.ws_loop_time) > self.ws_send_interval()):
                 msg = self.ws_data()
                 self.ws.send_msg(msg)
                 self.ws_data_count = 0
@@ -246,7 +246,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 return True
         return False
 
-    def ws_connected(self):
+    def ws_connected_retry(self):
         if self.ws_available():
             if self.ws.connected():
                 return True
@@ -255,6 +255,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             self.ws_connect()
             self.ws_auto_reconnect_count = 0
         self.ws_auto_reconnect_count += 1
+        return False
+
+    def ws_connected(self):
+        if self.ws_available():
+            if self.ws.connected():
+                return True
         return False
 
     def ws_on_open(self, ws):
@@ -754,12 +760,14 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         if "Flow" in line:
             flow_regex = re.compile(r"Flow: (\d+)\%")
             match = flow_regex.search(line)
-            extra_data = {
-                'flow_rate': int(match.group(1)),
-            }
-            msg = self.ws_data(extra_data=extra_data)
-            self.ws.send_msg(msg)
-
+            if match:
+                flow_rate = int(match.group(1))
+                extra_data = {
+                    'flow_rate': flow_rate,
+                }
+                if self.ws_connected():
+                    msg = self.ws_data(extra_data=extra_data)
+                    self.ws.send_msg(msg)
         return line
 
     def camera_snapshot(self, snapshot_url, cam_count=1):
