@@ -550,7 +550,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             else:
                 self._logger.warning("Gcode file path does not exist: %s", path)
 
-    def post_img(self, img=None, update=1):
+    def post_img(self, img=None, camera="primary"):
         self._logger.debug("Posting image")
 
         if not self.is_setup_complete():
@@ -568,7 +568,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         data = {
             "timestamp": self.make_timestamp(),
-            "update": update,
+            "camera": camera,
         }
 
         try:
@@ -585,7 +585,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                 "Posting image: %s, URL: %s, Headers %s",
                 e, url, self.make_auth_header())
 
-    def post_raw_img(self, filename, raw_img, update=0):
+    def post_raw_img(self, filename, raw_img, camera="primary"):
         self._logger.debug("Posting raw image")
 
         if not self.is_setup_complete():
@@ -600,7 +600,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
         data = {
             "timestamp": self.make_timestamp(),
-            "update": update,
+            "camera": camera,
         }
 
         try:
@@ -811,7 +811,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                         snapshot_url = self._settings.get(["snapshot_url_1"])
                         filename, img = self.camera_snapshot(snapshot_url)
                         if filename and img:
-                            self.post_raw_img(filename, img, update=1)
+                            self.post_raw_img(filename, img, camera="primary")
                         camera_count_1 = 0
                     camera_count_1 += 1
 
@@ -824,7 +824,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                             filename, img = self.camera_snapshot(
                                 snapshot_url, cam_count=2)
                             if filename and img:
-                                self.post_raw_img(filename, img)
+                                self.post_raw_img(filename, img, camera="secondary")
                             camera_count_2 = 0
                         camera_count_2 += 1
 
