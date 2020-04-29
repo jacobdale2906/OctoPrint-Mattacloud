@@ -1,7 +1,7 @@
 # OctoPrint-Mattacloud
 
 <p align="center">
-    <img src="extras/images/mattacloud_tab.png" alt="Mattacloud - OctoPrint tab">
+    <img src="extras/images/mattacloud.png" alt="Mattacloud by Mattalabs">
     <br/>
     <i>Add automatic error detection and remote access for your 3D printer.</i>
     <br/>
