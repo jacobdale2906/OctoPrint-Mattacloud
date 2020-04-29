@@ -24,6 +24,7 @@ from octoprint.filemanager.util import StreamWrapper, DiskFileWrapper
 
 from .ws import Socket
 from .printer import Printer
+from .backoff import BackoffTime
 
 
 class MattacloudPlugin(octoprint.plugin.StartupPlugin,
@@ -42,8 +43,8 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         self.active_online = False
         self.ws_data_count = 0
         self.loop_time = 1.0
-        self.ws_loop_time = 0.5
-        sentry_sdk.init(
+        self.ws_loop_time = 60
+        self.sentry = sentry_sdk.init(
             "https://878e280471064d3786d9bcd063e46ad7@sentry.io/1850943"
         )
 
@@ -183,8 +184,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def on_event(self, event, payload):
         if self.ws_connected():
-            msg = self.event_ws_data(event, payload)
-            self.ws.send_msg(msg)
+            try:
+                msg = self.event_ws_data(event, payload)
+                self.ws.send_msg(msg)
+            except Exception as e:
+                self._logger.error(e)
+                pass
 
     def is_enabled(self):
         return self._settings.get(["enabled"])
@@ -205,27 +210,50 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             return True
         return False
 
-    def ws_send_interval(self):
+    def printer_heating(self):
+        heating = False
+        if self._printer.is_operational():
+            heating = self._printer._comm._heating
+
+        return heating
+
+    def update_ws_send_interval(self):
         if self.active_online and self.has_job():
-            interval = 1
+            self.ws_loop_time = 0.5
         elif self.active_online and not self.has_job():
-            interval = 5
+            self.ws_loop_time = 2
         else:
-            interval = 30
-        return interval
+            self.ws_loop_time = 60
 
     def ws_send_data(self):
-        self.ws_data_count = 0
+        backoff = BackoffTime(max_time=300)  # 5 mins max backoff time
         while True:
-            if (self.ws_connected_retry() and (self.ws_data_count * self.ws_loop_time) > self.ws_send_interval()):
-                msg = self.ws_data()
-                self.ws.send_msg(msg)
-                self.ws_data_count = 0
-            time.sleep(self.ws_loop_time)
-            self.ws_data_count += 1
+            try:
+                self.ws_connect()
+                loop_count = 0
+                loop_time = 0.5
+                while self.ws_connected():
+                    if self.ws_loop_time <= (loop_count / loop_time):
+                        msg = self.ws_data()
+                        self.ws.send_msg(msg)
+                        loop_count = 0
+                    time.sleep(loop_time)
+                    backoff.zero()
+                    loop_count += 1
+
+            finally:
+                backoff.longer()
+                self._logger.error("Attempt: %s", str(backoff.attempt))
+                try:
+                    if self.ws is not None:
+                        self.ws.disconnect()
+                        self.ws = None
+                except Exception as e:
+                    self._logger.error("ws_send_data: %s", e)
+                    pass
 
     def ws_connect(self):
-        self._logger.debug("Connecting websocket")
+        self._logger.info("Connecting websocket")
         self.ws = Socket(
             on_open=lambda ws: self.ws_on_open(ws),
             on_message=lambda ws, msg: self.ws_on_message(
@@ -239,22 +267,13 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         ws_thread = threading.Thread(target=self.ws.run)
         ws_thread.daemon = True
         ws_thread.start()
+        time.sleep(3)
+        self._logger.info(str(self.ws))
 
     def ws_available(self):
         if self.is_enabled() and hasattr(self, "ws"):
-            if self.ws:
+            if self.ws is not None:
                 return True
-        return False
-
-    def ws_connected_retry(self):
-        if self.ws_available():
-            if self.ws.connected():
-                return True
-        if (self.ws_auto_reconnect_count * self.ws_loop_time) > self.ws_auto_reconnect:
-            self._logger.debug("Trying reconnect")
-            self.ws_connect()
-            self.ws_auto_reconnect_count = 0
-        self.ws_auto_reconnect_count += 1
         return False
 
     def ws_connected(self):
@@ -264,37 +283,50 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         return False
 
     def ws_on_open(self, ws):
-        self._logger.debug("Opening websocket...")
+        self._logger.info("Opening websocket...")
         self._settings.set(["ws_connected"], True, force=True)
         self._settings.save(force=True)
 
     def ws_on_close(self, ws):
-        self._logger.debug("Closing websocket...")
-        self.ws.disconnect()
-        self.ws = None
+        self._logger.info("Closing websocket...")
+        try:
+            self.ws.disconnect()
+            self.ws = None
+        except Exception as e:
+            self._logger.error("ws_on_close: %s", e)
+            pass
         self._settings.set(["ws_connected"], False, force=True)
         self._settings.save(force=True)
 
     def ws_on_error(self, ws, error):
         # TODO: handle websocket errors
-        self._logger.warning("Websocket Error: %s, URL: %s, Token: %s",
-                             error, self.get_base_url(), self.get_auth_token())
+        self._logger.error("ws_on_error: %s, URL: %s, Token: %s",
+                           error, self.get_base_url(), self.get_auth_token())
 
     def ws_on_message(self, ws, msg):
         json_msg = json.loads(msg)
         if "cmd" in json_msg:
             self.handle_cmds(json_msg)
             if self.ws_connected():
-                msg = self.ws_data()
-                self.ws.send_msg(msg)
+                try:
+                    msg = self.ws_data()
+                    self.ws.send_msg(msg)
+                except Exception as e:
+                    self._logger.error("ws_on_message: %s", e)
+                    pass
         if "state" in json_msg:
             if json_msg["state"].lower() == "active":
                 self.active_online = True
                 if self.ws_connected():
-                    msg = self.ws_data()
-                    self.ws.send_msg(msg)
+                    try:
+                        msg = self.ws_data()
+                        self.ws.send_msg(msg)
+                    except Exception as e:
+                        self._logger.error("ws_on_message: %s", e)
+                        pass
             else:
                 self.active_online = False
+        self.update_ws_send_interval()
 
     def ws_data(self, extra_data=None):
         # TODO: Customise what is sent depending on requirements
@@ -304,7 +336,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             "timestamp": self.make_timestamp(),
             "files": self.get_files(),
             "job": self.get_current_job(),
-            "config": 1 if self.is_config_print() else 0,
         }
         if extra_data:
             data.update(extra_data)
@@ -694,7 +725,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
         if command == "ws_reconnect":
             self.ws_connect()
             # TODO: Improve this... hacky wait for the websocket to connect
-            time.sleep(2)
             if self.ws_connected():
                 status_text = "Successfully connected to mattacloud."
                 success = True
@@ -766,8 +796,12 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     'flow_rate': flow_rate,
                 }
                 if self.ws_connected():
-                    msg = self.ws_data(extra_data=extra_data)
-                    self.ws.send_msg(msg)
+                    try:
+                        msg = self.ws_data(extra_data=extra_data)
+                        self.ws.send_msg(msg)
+                    except Exception as e:
+                        self._logger.error(e)
+                        pass
         return line
 
     def camera_snapshot(self, snapshot_url, cam_count=1):
