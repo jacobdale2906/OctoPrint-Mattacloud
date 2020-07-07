@@ -1,7 +1,7 @@
 # OctoPrint-Mattacloud
 
 <p align="center">
-    <img src="extras/images/mattacloud.png" alt="Mattacloud by Mattalabs">
+    <img src="extras/images/mattacloud-screens.png" alt="Mattacloud by Mattalabs">
     <br/>
     <i>Add automatic error detection and remote access for your 3D printer.</i>
     <br/>
@@ -28,13 +28,6 @@ Errors that are currently detected reliably:
 - Hotend too close to print bed
 
 ### Remote control and management
-
-<p align="center">
-    <img src="extras/images/mattacloud.png" alt="Mattacloud - Printer Overview">
-    <br/>
-    <i>Overview of 3 3D printers on the <b>mattacloud</b> dashboard.</i>
-    <br/>
-</p>
 
 Access your 3D printer from anywhere in the world (provided that there is an internet connection...) via the OctoPrint-Mattacloud Plugin.
 
