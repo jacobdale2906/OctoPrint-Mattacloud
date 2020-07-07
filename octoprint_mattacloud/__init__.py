@@ -16,6 +16,7 @@ import re
 
 import flask
 import requests
+from requests_toolbelt import MultipartEncoder
 import sentry_sdk
 
 import octoprint.plugin
@@ -219,11 +220,11 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
 
     def update_ws_send_interval(self):
         if self.active_online and self.has_job():
-            self.ws_loop_time = 0.5
+            self.ws_loop_time = 0.4
         elif self.active_online and not self.has_job():
-            self.ws_loop_time = 2
+            self.ws_loop_time = 0.8
         else:
-            self.ws_loop_time = 60
+            self.ws_loop_time = 30
 
     def ws_send_data(self):
         backoff = BackoffTime(max_time=300)  # 5 mins max backoff time
@@ -231,9 +232,9 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             try:
                 self.ws_connect()
                 loop_count = 0
-                loop_time = 0.5
+                loop_time = 0.1
                 while self.ws_connected():
-                    if self.ws_loop_time <= (loop_count / loop_time):
+                    if self.ws_loop_time <= (loop_count * loop_time):
                         msg = self.ws_data()
                         self.ws.send_msg(msg)
                         loop_count = 0
@@ -426,7 +427,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
                     # bed target temperature and “tool[0-9]+” for the
                     # offsets to the hotend target temperatures.
                     offsets = json_msg["offsets"]
-                    self._printer.set_temperature_offset(offset=offsets)
+                    self._printer.set_temperature_offset(offsets)
             if json_msg["cmd"].lower() == "z_adjust":
                 if "height" in json_msg:
                     height = json_msg["height"]
@@ -543,10 +544,6 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             self._logger.warning("Printer not ready")
             return
 
-        data = {
-            "timestamp": self.make_timestamp(),
-            "config": 1 if self.is_config_print() else 0,  # legacy
-        }
         if not gcode:
             job_info = self.get_current_job()
             gcode_name = job_info["file"]["name"]
@@ -556,18 +553,23 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
             if os.path.exists(path):
                 try:
                     with open(path, "rb") as gcode:
-                        url = self.get_gcode_url()
+                        data = MultipartEncoder(
+                            fields={
+                                "gcode": (gcode_name, gcode, "text/plain"),
+                                "timestamp": self.make_timestamp(),
+                            }
+                        )
 
-                        files = {
-                            "gcode": gcode,
-                        }
+                        url = self.get_gcode_url()
+                        headers = self.make_auth_header()
+                        extra_headers = {"Content-Type": data.content_type}
+                        headers.update(extra_headers)
 
                         try:
                             resp = requests.post(
                                 url=url,
-                                files=files,
                                 data=data,
-                                headers=self.make_auth_header()
+                                headers=headers,
                             )
                             resp.raise_for_status()
                         except requests.exceptions.RequestException as e:
