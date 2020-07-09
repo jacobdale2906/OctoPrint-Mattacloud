@@ -52,7 +52,7 @@ class MattacloudPlugin(octoprint.plugin.StartupPlugin,
     def get_settings_defaults(self):
         return dict(
             enabled=True,
-            base_url="https://mattalabs.com/",
+            base_url="https://cloud.mattalabs.com/",
             authorization_token="e.g. w1il4li2am2ca1xt4on91",
             upload_dir="/home/pi/.octoprint/uploads/",
             config_print=False,
